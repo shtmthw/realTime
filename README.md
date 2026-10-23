@@ -14,24 +14,14 @@ Open `http://localhost:5173`. The API is at `http://localhost:4000/graphql`.
 
 ## Pull and run pre-built images
 
-Pre-built images are published to Docker Hub under `matthew552`. Someone else can pull and run them without building:
+Pre-built images are published to Docker Hub under `matthew552`, pull and run them without building:
 
 ```bash
 docker pull matthew552/realtime-api
 docker pull matthew552/realtime-client
-docker compose up
 ```
 
 The images are tagged `matthew552/realtime-api` and `matthew552/realtime-client`.
-
-## Build and push images to Docker Hub
-
-```bash
-docker build -t matthew552/realtime-api ./project
-docker build -t matthew552/realtime-client ./client/Client-GraphQL-Chat
-docker push matthew552/realtime-api
-docker push matthew552/realtime-client
-```
 
 ## Environment
 
