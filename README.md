@@ -56,7 +56,6 @@ cp client/Client-GraphQL-Chat/.env.example client/Client-GraphQL-Chat/.env
 The `.env` files are gitignored; Compose injects the values via the `environment`
 block in `docker-compose.yml`.
 
->>>>>>> ce4c3b2 (Fix auth context and docker setup for groups)
 ## Features
 
 - Sign up / sign in with JWT sessions
