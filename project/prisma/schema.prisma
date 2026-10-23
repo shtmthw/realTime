@@ -4,34 +4,54 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = "mysql://Matthew:12345@localhost:3306/graphql_realtime_comm?"
+  url      = env("DATABASE_URL")
 }
 
 model user {
   id        Int        @id @default(autoincrement())
   name      String
+  email     String     @unique
   password  String
-  email     String     @unique(map: "User_email_key")
   createdAt DateTime   @default(now())
-  receiver  messages[] @relation("receiver")
-  sender    messages[] @relation("sender")
+  sentMessages    messages[] @relation("sender")
+  receivedMessages messages[] @relation("receiver")
+  groupMemberships groupMember[]
+  createdGroups      group[] @relation("GroupCreator")
 }
 
 model messages {
   id         Int      @id @default(autoincrement())
   text       String
-  receiverID Int
   senderID   Int
+  receiverID Int?
+  groupID    Int?
   createdAt  DateTime @default(now())
-  receiver   user     @relation("receiver", fields: [receiverID], references: [id])
+
   sender     user     @relation("sender", fields: [senderID], references: [id])
+  receiver   user?    @relation("receiver", fields: [receiverID], references: [id])
+  group      group?   @relation("groupMessages", fields: [groupID], references: [id])
 
   @@index([receiverID], map: "messages_receiverID_fkey")
   @@index([senderID], map: "messages_senderID_fkey")
+  @@index([groupID], map: "messages_groupID_fkey")
 }
 
-model sexbots {
-  id       Int    @id @default(autoincrement())
-  botName  String @unique
-  botOwner String
+model group {
+  id        Int       @id @default(autoincrement())
+  name      String
+  creatorId Int
+  createdAt DateTime @default(now())
+  messages  messages[] @relation("groupMessages")
+  members   groupMember[]
+
+  creator   user      @relation("GroupCreator", fields: [creatorId], references: [id])
+}
+
+model groupMember {
+  userId   Int
+  groupId  Int
+  user     user     @relation(fields: [userId], references: [id])
+  group    group    @relation(fields: [groupId], references: [id])
+
+  @@id([userId, groupId])
 }

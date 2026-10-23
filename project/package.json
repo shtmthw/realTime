@@ -1,27 +1,39 @@
 {
-  "name": "project",
+  "name": "realtime-api",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:studio": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "GraphQL realtime chat API with direct messages and group chats",
   "dependencies": {
     "@apollo/client": "^3.11.8",
+    "@graphql-tools/schema": "^10.0.0",
     "@prisma/client": "^5.21.1",
     "apollo-server": "^3.13.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "graphql": "^16.9.0",
-    "jsonwebtoken": "^9.0.2",
-    "mysql": "^2.18.1",
-    "nodemon": "^3.1.7"
+    "jose": "^5.9.6"
   },
   "devDependencies": {
+    "nodemon": "^3.1.7",
     "prisma": "^5.21.1"
+  },
+  "allowScripts": {
+    "@prisma/client@5.21.1": true,
+    "@prisma/engines@5.21.1": true,
+    "prisma@5.21.1": true,
+    "@apollo/protobufjs@1.2.7": true,
+    "@apollo/protobufjs@1.2.6": true
   }
 }

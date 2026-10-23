@@ -1,19 +1,19 @@
-import { ApolloServer, gql } from "apollo-server";
-import { typeDefs }  from "./gqlControls/typeDefs.js";
-import  { resolvers } from "./gqlControls/resolvers.js";
-import jwt from 'jsonwebtoken'
-const server = new ApolloServer({
+import 'dotenv/config';
+import { ApolloServer } from 'apollo-server';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { verifyToken } from './lib/auth.js';
+import { typeDefs } from './gqlControls/typeDefs.js';
+import { resolvers } from './gqlControls/resolvers.js';
 
-    typeDefs,
-    resolvers,
-    context: ( { req } )=>{
-        const { authorization } = req.headers
-        if( authorization ){
-            const { userID } =  jwt.verify(authorization , "veryverytopsecret")
-            return  { userID }
-        }
-    }
+const schema = makeExecutableSchema({ typeDefs, resolvers });
+
+const server = new ApolloServer({
+  schema,
+  context: async ({ req }) => verifyToken(req.headers.authorization),
 });
-server.listen().then(( { url } )=>{
-    console.log('Server started at : ',url)
-})
+
+const PORT = process.env.PORT || 4000;
+
+server.listen({ port: PORT }).then(({ url }) => {
+  console.log(`Server ready at ${url}`);
+});

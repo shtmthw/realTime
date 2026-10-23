@@ -1,180 +1,233 @@
-import { itemData, foodData, todoList, users } from "./testMockDB.js"
-import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken'
-// import env from 'dotenv'
-import { env } from 'node:process';
-import { type } from "node:os";
+import bcrypt from 'bcryptjs';
+import { signToken } from '../lib/auth.js';
 
 const prisma = new PrismaClient();
+
+const toISO = (date) => (date ? new Date(date).toISOString() : null);
+
+const formatMessage = (m) => ({
+  id: m.id.toString(),
+  text: m.text,
+  senderID: m.senderID.toString(),
+  senderName: m.sender?.name ?? null,
+  receiverID: m.receiverID ? m.receiverID.toString() : null,
+  groupID: m.groupID ? m.groupID.toString() : null,
+  createdAt: toISO(m.createdAt),
+});
+
+const formatUser = (u) => ({
+  id: u.id.toString(),
+  name: u.name,
+  email: u.email,
+  createdAt: toISO(u.createdAt),
+});
+
+const formatGroup = (g) => ({
+  id: g.id.toString(),
+  name: g.name,
+  creatorId: g.creatorId.toString(),
+  memberCount: g._count?.members ?? g.memberCount ?? 0,
+  createdAt: toISO(g.createdAt),
+});
+
 export const resolvers = {
-    Query: {
-
-        //Here we are sending the itemData arr to be schema using the 'items' key value, soin the schema it will be handled accrodingly 
-        allTodos: () => todoList,
-        getPersonalMessages : async(_, { receiverID } , { userID })=>{
-            if (!userID) {
-                console.log(userID)
-                throw new Error("Login To Continue!!")
-            
-            }
-            if(!receiverID){
-                throw new Error("Receiver Id not given!")
-            }
-            const receiverId = Number(receiverID)
-            const exchangedMessages = await prisma.messages.findMany({
-                where : {
-                    OR : [
-                        {receiverID : receiverId , senderID : userID},
-                        {senderID : receiverId , receiverID : userID}   
-                    ]
-                }
-            })
-            return exchangedMessages
-        },
-        items: () => itemData,
-        //sending the individual item to the schema
-        item: (parent, { ID }, context) => {
-            return itemData.find(item => item.id == ID)
-        },
-        users: async (_, args ,  { userID } ) => {
-            if (!userID) {
-                console.log(userID)
-                throw new Error("Login To Continue!!")
-            
-            }
-            console.log(userID)
-            const users = await prisma.user.findMany({ where: { id: { not: userID } } })
-            return users
-        },
-
-        user: (parent, { ID }, context) => {
-            return users.find(user => user.id == ID)
-        },
-        //using a different array, that will also work becuase the defiend feilds on the schema are indeed matching
-        food: (parent, { ID }, context) => {
-            return foodData.find(item => item.id == ID)
-        },
-        foods: () => {
-            return foodData
-        }
+  Query: {
+    users: async (_, __, { userID }) => {
+      if (!userID) {
+        throw new Error('Login to continue');
+      }
+      const users = await prisma.user.findMany({
+        where: { id: { not: userID } },
+        orderBy: { name: 'asc' },
+      });
+      return users.map(formatUser);
     },
-    // userSchema: {
-    //     todos: (parent) => {
-    //         return todoList.filter((item) => parent.id == item.by)
-    //     }
-    // },
-    Mutation: {
-        createMessage : async(_,{ newMsg } , { userID }) => {
-            if(!userID) {
-                throw new Error('Please Login To Sent a Message!')
-            }
-            if(newMsg.text.includes(" ") || newMsg.text.length < 1){
-                throw new Error("Message Can't Be Emmpty")
-            }
-            const message = await prisma.messages.create({
-                data : {
-                    text : newMsg.text
-                    ,receiverID : Number(newMsg.receiverID)
-                    ,senderID : userID
-                }
-            })
-            return message
-        
+
+    user: async (_, { ID }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: Number(ID) },
+      });
+      if (!user) return null;
+      return formatUser(user);
+    },
+
+    getPersonalMessages: async (_, { receiverID }, { userID }) => {
+      if (!userID) {
+        throw new Error('Login to continue');
+      }
+      if (!receiverID) {
+        throw new Error('Receiver ID not given');
+      }
+      const receiverId = Number(receiverID);
+      const messages = await prisma.messages.findMany({
+        where: {
+          OR: [
+            { receiverID: receiverId, senderID: userID },
+            { senderID: receiverId, receiverID: userID },
+          ],
         },
-        loginUser: async (_, { userInfo }) => {
-            if (!userInfo.email || !userInfo.password) {
-                throw new Error('Please Fill The Required Fields.')
-            }
-            const userExist = await prisma.user.findUnique({ where: { email: userInfo.email } })
-            if (!userExist) {
-                throw new Error('Email or Password Incorrect')
-            }
-            const comparedPass = await bcrypt.compare(userInfo.password, userExist.password)
-            if (!comparedPass) {
-                throw new Error("Email or Password Incorrect")
-            }
-            const token = jwt.sign({ userID: userExist.id }, "veryverytopsecret")
-            const data = {
-                name: userExist.name,
-                token: token
-            }
-            return data
+        orderBy: { createdAt: 'asc' },
+        include: { sender: true },
+      });
+      return messages.map(formatMessage);
+    },
+
+    getGroups: async (_, __, { userID }) => {
+      if (!userID) {
+        throw new Error('Login to continue');
+      }
+      const groups = await prisma.group.findMany({
+        where: { members: { some: { userId: userID } } },
+        include: { _count: { select: { members: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      return groups.map(formatGroup);
+    },
+
+    getGroupMessages: async (_, { groupID }, { userID }) => {
+      if (!userID) {
+        throw new Error('Login to continue');
+      }
+      if (!groupID) {
+        throw new Error('Group ID not given');
+      }
+      const membership = await prisma.groupMember.findUnique({
+        where: {
+          userId_groupId: { userId: userID, groupId: Number(groupID) },
         },
-        createNewSexBot: async (_, { newSBot }) => {
-            // try {
-            if (!newSBot.botName || !newSBot.botOwner) {
-                throw new Error('Error In Field Validation, must include full filled attributes')
-            }
-            const botExists = await prisma.sexbots.findUnique({ where: { botName: newSBot.botName } })
-            if (botExists) {
-                throw new Error('Bot with this name already exists.')
-            }
-            const newBot = await prisma.sexbots.create(
-                {
-                    data: {
-                        botName: newSBot.botName,
-                        botOwner: newSBot.botOwner
-                    }
-                }
-            )
-            return newBot
+      });
+      if (!membership) {
+        throw new Error('Not a member of this group');
+      }
+      const messages = await prisma.messages.findMany({
+        where: { groupID: Number(groupID) },
+        orderBy: { createdAt: 'asc' },
+        include: { sender: true },
+      });
+      return messages.map(formatMessage);
+    },
+  },
 
-
-            // } catch (e) {
-            //     throw new Error('Error In Catch Block [e] : ', e)
-            // }
+  Mutation: {
+    createMessage: async (_, { newMsg }, { userID }) => {
+      if (!userID) {
+        throw new Error('Please login to send a message');
+      }
+      if (!newMsg.text || newMsg.text.trim().length < 1) {
+        throw new Error("Message can't be empty");
+      }
+      const receiverID = newMsg.receiverID ? Number(newMsg.receiverID) : null;
+      const message = await prisma.messages.create({
+        data: {
+          text: newMsg.text.trim(),
+          senderID: userID,
+          receiverID,
         },
-        createNewTodo: (_, { newTodo }) => {
-            const todoData = {
-                by: Math.floor(Math.random(10))
-                , ...newTodo
-            }
-            todoList.push(todoData)
-            return todoData
+        include: { sender: true },
+      });
+      const formatted = formatMessage(message);
+      return formatted;
+    },
+
+    createGroupMessage: async (_, { newMsg }, { userID }) => {
+      if (!userID) {
+        throw new Error('Please login to send a message');
+      }
+      if (!newMsg.text || newMsg.text.trim().length < 1) {
+        throw new Error("Message can't be empty");
+      }
+      if (!newMsg.groupID) {
+        throw new Error('Group ID is required');
+      }
+      const membership = await prisma.groupMember.findUnique({
+        where: {
+          userId_groupId: { userId: userID, groupId: Number(newMsg.groupID) },
         },
-
-        createNewItem: (_, { newItem }, context) => {
-            const item = {
-                id: Math.random(),
-                ...newItem
-            }
-            itemData.push(item)
-            return item
+      });
+      if (!membership) {
+        throw new Error('Not a member of this group');
+      }
+      const message = await prisma.messages.create({
+        data: {
+          text: newMsg.text.trim(),
+          senderID: userID,
+          groupID: Number(newMsg.groupID),
         },
-        createNewFood: (_, { newFood }, context) => {
-            const item = {
-                id: Math.random(),
-                ...newFood
-            }
-            foodData.push(item) 
-            return item
+        include: { sender: true },
+      });
+      const formatted = formatMessage(message);
+      return formatted;
+    },
+
+    createNewUser: async (_, { newUser }) => {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: newUser.email },
+      });
+      if (existingUser) {
+        throw new Error('User already exists');
+      }
+      const hashedPassword = await bcrypt.hash(newUser.password, 10);
+      const createdUser = await prisma.user.create({
+        data: {
+          name: newUser.name,
+          email: newUser.email,
+          password: hashedPassword,
         },
-        createNewUser: async (_, { newUser }) => {
-            // Check if user already exists by email
-            const existingUser = await prisma.user.findUnique({
-                where: { email: newUser.email }
-            });
+      });
+      return formatUser(createdUser);
+    },
 
-            if (existingUser) {
-                throw new Error('User already exists!');
-            }
+    loginUser: async (_, { userInfo }) => {
+      if (!userInfo.email || !userInfo.password) {
+        throw new Error('Please fill the required fields');
+      }
+      const userExist = await prisma.user.findUnique({
+        where: { email: userInfo.email },
+      });
+      if (!userExist) {
+        throw new Error('Email or password incorrect');
+      }
+      const comparedPass = await bcrypt.compare(
+        userInfo.password,
+        userExist.password
+      );
+      if (!comparedPass) {
+        throw new Error('Email or password incorrect');
+      }
+      const token = await signToken(userExist.id);
+      return { name: userExist.name, token };
+    },
 
-            // Hash the password before saving the user
-            const hashedPassword = await bcrypt.hash(newUser.password, 10);
+    createGroup: async (_, { newGroup }, { userID }) => {
+      if (!userID) {
+        throw new Error('Please login to create a group');
+      }
+      if (!newGroup.name || newGroup.name.trim().length < 1) {
+        throw new Error('Group name is required');
+      }
+      const memberIds = Array.from(
+        new Set([...newGroup.memberIds, String(userID)])
+      ).map(Number);
 
-            // Create and save the new user with hashed password
-            const createdUser = await prisma.user.create({
-                data: {
-                    name: newUser.name,
-                    email: newUser.email,
-                    password: hashedPassword,
-                    createdAt: new Date()  // ensure you set a default date
-                }
-            });
+      const members = await prisma.user.findMany({
+        where: { id: { in: memberIds } },
+      });
+      if (members.length !== memberIds.length) {
+        throw new Error('One or more members do not exist');
+      }
 
-            return createdUser;
-        }
-
-    }
-}
+      const group = await prisma.group.create({
+        data: {
+          name: newGroup.name.trim(),
+          creatorId: userID,
+          members: {
+            create: memberIds.map((id) => ({ userId: id })),
+          },
+        },
+        include: { _count: { select: { members: true } } },
+      });
+      return formatGroup(group);
+    },
+  },
+};

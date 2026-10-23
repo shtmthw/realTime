@@ -1,19 +1,30 @@
-import React from 'react'
-import { Typography , Stack } from '@mui/material'
+import { Box, Stack, Typography, Avatar } from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
 
-
-
-function WelcomeScreen() {
+export default function WelcomeScreen() {
   return (
-    <>
-    <Stack flexGrow={1} display="flex" justifyContent="center" alignItems="center">
-        <Typography variant='h2'>
-            Welcome To OUR zone!
+    <Box
+      sx={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: 'background.default',
+      }}
+    >
+      <Avatar sx={{ width: 64, height: 64, mb: 2, bgcolor: 'primary.main' }}>
+        <PersonIcon fontSize="large" />
+      </Avatar>
+      <Stack spacing={1} alignItems="center" textAlign="center">
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+          Welcome to Realtime
         </Typography>
-    </Stack>
-    </>
-
-  )
+        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 320 }}>
+          Select a direct message from the sidebar or create a group to start
+          messaging. Messages sync in real time across devices.
+        </Typography>
+      </Stack>
+    </Box>
+  );
 }
-
-export default WelcomeScreen
