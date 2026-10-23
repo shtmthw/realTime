@@ -52,7 +52,6 @@ cp client/Client-GraphQL-Chat/.env.example client/Client-GraphQL-Chat/.env
 | `CORS_ORIGIN` | api | Allowed CORS origin |
 | `VITE_API_URL` | client | GraphQL endpoint |
 
-<<<<<<< HEAD
 =======
 The `.env` files are gitignored; Compose injects the values via the `environment`
 block in `docker-compose.yml`.
