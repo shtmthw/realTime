@@ -5,7 +5,7 @@ A clean, dark-themed realtime chat app with direct messages and group chats, bui
 ## Run with Docker Compose
 
 ```bash
-git clone https://github.com/<you>/realTime.git
+git clone https://github.com/shtmthw/realTime.git
 cd realTime
 docker compose up
 ```
@@ -29,17 +29,6 @@ cp client/Client-GraphQL-Chat/.env.example client/Client-GraphQL-Chat/.env
 | `JWT_SECRET` | auth | Secret for signing session tokens |
 | `PORT` | api | API port (default 4000) |
 | `VITE_API_URL` | client | GraphQL endpoint |
-
-## Docker Hub images
-
-Build and push to your Docker Hub repo:
-
-```bash
-docker build -t matthew552/realtime-api ./project
-docker build -t matthew552/realtime-client ./client/Client-GraphQL-Chat
-docker push matthew552/realtime-api
-docker push matthew552/realtime-client
-```
 
 ## Features
 
