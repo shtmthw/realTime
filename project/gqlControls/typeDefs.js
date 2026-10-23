@@ -7,6 +7,7 @@ export const typeDefs = gql`
         getPersonalMessages(receiverID: String!): [sentMessage]
         getGroups: [groupSchema]
         getGroupMessages(groupID: ID!): [sentMessage]
+        getFriendRequests: [friendRequestSchema]
     }
 
     type userSchema {
@@ -34,11 +35,25 @@ export const typeDefs = gql`
         createdAt: String!
     }
 
-    input createNewUser {
-        name: String!
-        email: String!
-        password: String!
+    type friendRequestSchema {
+        id: ID!
+        senderId: ID!
+        receiverId: ID!
+        senderName: String
+        receiverName: String
+        status: String!
+        createdAt: String!
     }
+
+input createNewUser {
+    name: String!
+    email: String!
+    password: String!
+}
+
+input createSimpleUser {
+    name: String!
+}
 
     input userInfoSchema {
         email: String!
@@ -60,6 +75,10 @@ export const typeDefs = gql`
         memberIds: [ID!]!
     }
 
+    input sendFriendRequestInput {
+        receiverId: ID!
+    }
+
     type genaratedToken {
         name: String!
         token: String!
@@ -69,7 +88,9 @@ export const typeDefs = gql`
         createMessage(newMsg: msgSchema!): sentMessage
         createGroupMessage(newMsg: groupMessageSchema!): sentMessage
         createNewUser(newUser: createNewUser!): userSchema
+        createSimpleUser(newUser: createSimpleUser!): userSchema
         loginUser(userInfo: userInfoSchema!): genaratedToken
         createGroup(newGroup: createGroupInput!): groupSchema
+        sendFriendRequest(input: sendFriendRequestInput!): friendRequestSchema
     }
 `;

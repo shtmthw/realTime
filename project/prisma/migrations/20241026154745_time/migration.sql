@@ -1,5 +1,1 @@
--- AlterTable
-ALTER TABLE `messages` ADD COLUMN `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3);
-
--- AlterTable
-ALTER TABLE `user` MODIFY `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3);
+-- No-op: superseded by 20241022192926_init (full schema)

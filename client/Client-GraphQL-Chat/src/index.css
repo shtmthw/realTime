@@ -8,8 +8,8 @@ html,
 body,
 #root {
   height: 100%;
-  background-color: #0f172a;
-  color: #f1f5f9;
+  background-color: #101418;
+  color: #e5e7eb;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     sans-serif;
 }
@@ -37,12 +37,12 @@ select {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #101418;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #2a3038;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #3a3f45;
 }

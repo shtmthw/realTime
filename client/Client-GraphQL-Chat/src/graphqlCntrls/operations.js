@@ -69,6 +69,45 @@ export const GET_GROUP_MESSAGES = gql`
   }
 `;
 
+export const CREATE_SIMPLE_USER = gql`
+  mutation CreateSimpleUser($newUser: createSimpleUser!) {
+    createSimpleUser(newUser: $newUser) {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`;
+
+export const SEND_FRIEND_REQUEST = gql`
+  mutation SendFriendRequest($input: sendFriendRequestInput!) {
+    sendFriendRequest(input: $input) {
+      id
+      senderId
+      receiverId
+      senderName
+      receiverName
+      status
+      createdAt
+    }
+  }
+`;
+
+export const GET_FRIEND_REQUESTS = gql`
+  query GetFriendRequests {
+    getFriendRequests {
+      id
+      senderId
+      receiverId
+      senderName
+      receiverName
+      status
+      createdAt
+    }
+  }
+`;
+
 export const CREATE_MESSAGE = gql`
   mutation CreateMessage($newMsg: msgSchema!) {
     createMessage(newMsg: $newMsg) {

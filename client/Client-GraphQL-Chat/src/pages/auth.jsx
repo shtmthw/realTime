@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { SIGNUP, LOGIN } from '../graphqlCntrls/operations';
 
 export default function Auth() {
-  const [mode, setMode] = useState<'signup' | 'login'>('login');
+  const [mode, setMode] = useState('login');
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,6 +25,7 @@ export default function Auth() {
   const [login] = useMutation(LOGIN, {
     onCompleted: ({ loginUser }) => {
       localStorage.setItem('token', loginUser.token);
+      window.dispatchEvent(new Event('tokenchange'));
       setError(null);
       navigate('/');
     },
@@ -55,6 +56,7 @@ export default function Auth() {
           },
         });
         setError(null);
+        setMode('login');
       }
     } catch (err) {
       setError(err.message || 'Something went wrong');

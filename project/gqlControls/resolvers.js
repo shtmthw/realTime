@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { signToken } from '../lib/auth.js';
+import { signToken, verifyToken } from '../lib/auth.js';
 
 const prisma = new PrismaClient();
 
@@ -31,9 +31,20 @@ const formatGroup = (g) => ({
   createdAt: toISO(g.createdAt),
 });
 
+const formatFriendRequest = (fr) => ({
+  id: fr.id.toString(),
+  senderId: fr.senderId.toString(),
+  receiverId: fr.receiverId.toString(),
+  senderName: fr.sender?.name ?? null,
+  receiverName: fr.receiver?.name ?? null,
+  status: fr.status,
+  createdAt: toISO(fr.createdAt),
+});
+
 export const resolvers = {
   Query: {
-    users: async (_, __, { userID }) => {
+    users: async (_, __, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Login to continue');
       }
@@ -52,7 +63,8 @@ export const resolvers = {
       return formatUser(user);
     },
 
-    getPersonalMessages: async (_, { receiverID }, { userID }) => {
+    getPersonalMessages: async (_, { receiverID }, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Login to continue');
       }
@@ -73,7 +85,8 @@ export const resolvers = {
       return messages.map(formatMessage);
     },
 
-    getGroups: async (_, __, { userID }) => {
+    getGroups: async (_, __, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Login to continue');
       }
@@ -85,7 +98,20 @@ export const resolvers = {
       return groups.map(formatGroup);
     },
 
-    getGroupMessages: async (_, { groupID }, { userID }) => {
+    getFriendRequests: async (_, __, { userID }) => {
+      if (!userID) {
+        throw new Error('Login to continue');
+      }
+      const requests = await prisma.friendRequest.findMany({
+        where: { receiverId: userID },
+        include: { sender: true, receiver: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      return requests.map(formatFriendRequest);
+    },
+
+    getGroupMessages: async (_, { groupID }, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Login to continue');
       }
@@ -110,7 +136,8 @@ export const resolvers = {
   },
 
   Mutation: {
-    createMessage: async (_, { newMsg }, { userID }) => {
+    createMessage: async (_, { newMsg }, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Please login to send a message');
       }
@@ -130,7 +157,8 @@ export const resolvers = {
       return formatted;
     },
 
-    createGroupMessage: async (_, { newMsg }, { userID }) => {
+    createGroupMessage: async (_, { newMsg }, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Please login to send a message');
       }
@@ -178,6 +206,23 @@ export const resolvers = {
       return formatUser(createdUser);
     },
 
+    createSimpleUser: async (_, { newUser }) => {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: `${newUser.name.toLowerCase().replace(/\s+/g, '')}@example.com` },
+      });
+      if (existingUser) {
+        throw new Error('User already exists');
+      }
+      const createdUser = await prisma.user.create({
+        data: {
+          name: newUser.name.trim(),
+          email: `${newUser.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+          password: await bcrypt.hash('default-password-change-me', 10),
+        },
+      });
+      return formatUser(createdUser);
+    },
+
     loginUser: async (_, { userInfo }) => {
       if (!userInfo.email || !userInfo.password) {
         throw new Error('Please fill the required fields');
@@ -199,7 +244,8 @@ export const resolvers = {
       return { name: userExist.name, token };
     },
 
-    createGroup: async (_, { newGroup }, { userID }) => {
+    createGroup: async (_, { newGroup }, ctx) => {
+      const userID = ctx?.userID || ctx?.id || ctx?.sub;
       if (!userID) {
         throw new Error('Please login to create a group');
       }
@@ -228,6 +274,43 @@ export const resolvers = {
         include: { _count: { select: { members: true } } },
       });
       return formatGroup(group);
+    },
+
+    sendFriendRequest: async (_, { input }, { userID }) => {
+      if (!userID) {
+        throw new Error('Please login to send a friend request');
+      }
+      if (!input.receiverId) {
+        throw new Error('Receiver ID is required');
+      }
+      const receiverId = Number(input.receiverId);
+      if (receiverId === userID) {
+        throw new Error('Cannot send friend request to yourself');
+      }
+      const receiverExists = await prisma.user.findUnique({
+        where: { id: receiverId },
+      });
+      if (!receiverExists) {
+        throw new Error('User not found');
+      }
+      const existingRequest = await prisma.friendRequest.findFirst({
+        where: {
+          senderId: userID,
+          receiverId: receiverId,
+        },
+      });
+      if (existingRequest) {
+        throw new Error('Friend request already sent');
+      }
+      const request = await prisma.friendRequest.create({
+        data: {
+          senderId: userID,
+          receiverId: receiverId,
+          status: 'pending',
+        },
+        include: { sender: true, receiver: true },
+      });
+      return formatFriendRequest(request);
     },
   },
 };

@@ -6,8 +6,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4000
 
-# Install system deps for Prisma (MySQL client libs) and native modules
-RUN apk add --no-cache python3 make g++
+# Install system deps for Prisma (MySQL client libs, OpenSSL for Prisma engines on musl/alpine) and native modules
+RUN apk add --no-cache python3 make g++ openssl
 
 # Copy dependency files first for layer caching
 COPY package.json package-lock.json ./
@@ -18,6 +18,7 @@ RUN npm ci --omit=dev
 COPY prisma ./prisma
 COPY server.js ./
 COPY gqlControls ./gqlControls
+COPY lib ./lib
 
 # Generate Prisma client
 RUN npx prisma generate

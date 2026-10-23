@@ -12,6 +12,27 @@ docker compose up
 
 Open `http://localhost:5173`. The API is at `http://localhost:4000/graphql`.
 
+## Pull and run pre-built images
+
+Pre-built images are published to Docker Hub under `matthew552`. Someone else can pull and run them without building:
+
+```bash
+docker pull matthew552/realtime-api
+docker pull matthew552/realtime-client
+docker compose up
+```
+
+The images are tagged `matthew552/realtime-api` and `matthew552/realtime-client`.
+
+## Build and push images to Docker Hub
+
+```bash
+docker build -t matthew552/realtime-api ./project
+docker build -t matthew552/realtime-client ./client/Client-GraphQL-Chat
+docker push matthew552/realtime-api
+docker push matthew552/realtime-client
+```
+
 ## Environment
 
 Compose works out of the box with sensible defaults. Override any value in
@@ -26,10 +47,17 @@ cp client/Client-GraphQL-Chat/.env.example client/Client-GraphQL-Chat/.env
 | Variable | Service | Description |
 |----------|---------|-------------|
 | `DATABASE_URL` | api | MySQL connection string |
-| `JWT_SECRET` | auth | Secret for signing session tokens |
+| `JWT_SECRET` | api | Secret for signing session tokens |
 | `PORT` | api | API port (default 4000) |
+| `CORS_ORIGIN` | api | Allowed CORS origin |
 | `VITE_API_URL` | client | GraphQL endpoint |
 
+<<<<<<< HEAD
+=======
+The `.env` files are gitignored; Compose injects the values via the `environment`
+block in `docker-compose.yml`.
+
+>>>>>>> ce4c3b2 (Fix auth context and docker setup for groups)
 ## Features
 
 - Sign up / sign in with JWT sessions

@@ -17,6 +17,8 @@ model user {
   receivedMessages messages[] @relation("receiver")
   groupMemberships groupMember[]
   createdGroups      group[] @relation("GroupCreator")
+  sentFriendRequests friendRequest[] @relation("sender")
+  receivedFriendRequests friendRequest[] @relation("receiver")
 }
 
 model messages {
@@ -54,4 +56,14 @@ model groupMember {
   group    group    @relation(fields: [groupId], references: [id])
 
   @@id([userId, groupId])
+}
+
+model friendRequest {
+  id        Int      @id @default(autoincrement())
+  senderId  Int
+  receiverId Int
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  sender    user     @relation("sender", fields: [senderId], references: [id])
+  receiver  user     @relation("receiver", fields: [receiverId], references: [id])
 }
