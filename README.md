@@ -31,7 +31,6 @@ Pre-built images are published to Docker Hub under `matthew552`:
 ```bash
 docker pull matthew552/realtime-api
 docker pull matthew552/realtime-client
-docker compose up
 ```
 
 The images are tagged `matthew552/realtime-api` and `matthew552/realtime-client`.
