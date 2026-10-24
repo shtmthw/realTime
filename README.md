@@ -1,19 +1,22 @@
 # Realtime
 
-A clean, dark-themed realtime chat app with direct messages and group chats, built with React, Apollo GraphQL, Node, Prisma, nginx and MySQL.
+A clean, dark-themed realtime chat app with direct messages and group chats.
+Realtime message sync (polling), built with React, Apollo GraphQL, Node, Prisma, nginx and MySQL.
 
 ## Features
 
 - Sign up / sign in with JWT sessions
+<img width="1914" height="995" alt="Screenshot_20261024_161427" src="https://github.com/user-attachments/assets/7ef2820b-c6c5-4ca1-a00f-02f056100f53" />
 
 - Add people by the exact username they signed up with; the chat appears in Direct Messages
 <img width="1913" height="991" alt="Screenshot_20261024_161626" src="https://github.com/user-attachments/assets/ba21e0f6-8caf-40d9-80e5-dd783c90eaaf" />
 
 
 - Direct messages between users
+<img width="1914" height="995" alt="Screenshot_20261024_161348" src="https://github.com/user-attachments/assets/25b2d42d-d7c0-4873-8696-e95ff48d1453" />
+
 - Group chats with multi-member selection, plus add more members by username at any time
-- Realtime message sync (polling)
-- Dark, minimal UI
+<img width="1914" height="995" alt="Screenshot_20261024_161413" src="https://github.com/user-attachments/assets/a5d8c9db-53db-4f44-977a-f4427e7e823a" />
 
 ## Run with Docker Compose
 
