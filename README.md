@@ -1,6 +1,6 @@
 # Realtime
 
-A clean, dark-themed realtime chat app with direct messages and group chats, built with React, Apollo GraphQL, Node, Prisma and MySQL.
+A clean, dark-themed realtime chat app with direct messages and group chats, built with React, Apollo GraphQL, Node, Prisma, nginx and MySQL.
 
 ## Features
 
@@ -36,18 +36,6 @@ docker pull matthew552/realtime-client
 The images are tagged `matthew552/realtime-api` and `matthew552/realtime-client`.
 Compose builds locally when an image is missing.
 
-## Build and push images to Docker Hub
-
-```bash
-docker compose build
-docker compose push
-
-# or build explicitly
-docker build -t matthew552/realtime-api ./project
-docker build -t matthew552/realtime-client ./client/Client-GraphQL-Chat
-docker push matthew552/realtime-api
-docker push matthew552/realtime-client
-```
 
 ## Environment
 
