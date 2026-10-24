@@ -5,7 +5,11 @@ A clean, dark-themed realtime chat app with direct messages and group chats, bui
 ## Features
 
 - Sign up / sign in with JWT sessions
+
 - Add people by the exact username they signed up with; the chat appears in Direct Messages
+<img width="1913" height="991" alt="Screenshot_20261024_161626" src="https://github.com/user-attachments/assets/ba21e0f6-8caf-40d9-80e5-dd783c90eaaf" />
+
+
 - Direct messages between users
 - Group chats with multi-member selection, plus add more members by username at any time
 - Realtime message sync (polling)
