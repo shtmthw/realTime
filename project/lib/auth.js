@@ -1,37 +1,43 @@
 import { jwtVerify, SignJWT } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-secret-change-me-in-production');
+// Read lazily so the value is always the one dotenv/compose injected.
+const getSecret = () =>
+  new TextEncoder().encode(
+    process.env.JWT_SECRET || 'dev-secret-change-me-in-production'
+  );
 
-export const signToken = (userID) =>
-  new SignJWT({ userID })
+const normalizeUserId = (value) => {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
+
+export const signToken = (userID) => {
+  const id = normalizeUserId(userID);
+  if (!id) throw new Error('Cannot sign a token without a user id');
+  return new SignJWT({ userID: id })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
-    .sign(JWT_SECRET);
+    .sign(getSecret());
+};
 
+/**
+ * Verify a JWT from an Authorization header (with or without the "Bearer "
+ * prefix). Returns `{ userID }` only when the signature and expiry are valid.
+ * There is deliberately no unverified decode fallback: an invalid or expired
+ * token must behave exactly like a missing one.
+ */
 export const verifyToken = async (authorization) => {
-  if (!authorization) return null;
+  if (!authorization || typeof authorization !== 'string') return null;
+  const token = authorization.replace(/^bearer\s+/i, '').trim();
+  if (!token) return null;
+
   try {
-    const token = typeof authorization === 'string'
-      ? (authorization.replace(/^bearer\s+/i, '').trim())
-      : authorization;
-    if (!token || typeof token !== 'string') return null;
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    if (payload.userID) return { userID: payload.userID };
-    if (payload.id) return { userID: payload.id };
-    if (payload.sub) return { userID: payload.sub };
-    return null;
-  } catch (_) {
-    try {
-      if (typeof authorization === 'string') {
-        const token = authorization.replace(/^bearer\s+/i, '').trim();
-        if (token && token.split('.').length === 3) {
-          const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-          if (payload.userID) return { userID: payload.userID };
-          if (payload.id) return { userID: payload.id };
-          if (payload.sub) return { userID: payload.sub };
-        }
-      }
-    } catch {}
+    const { payload } = await jwtVerify(token, getSecret());
+    const userID = normalizeUserId(
+      payload.userID ?? payload.id ?? payload.sub
+    );
+    return userID ? { userID } : null;
+  } catch {
     return null;
   }
 };

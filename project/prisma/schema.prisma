@@ -19,6 +19,8 @@ model user {
   createdGroups      group[] @relation("GroupCreator")
   sentFriendRequests friendRequest[] @relation("sender")
   receivedFriendRequests friendRequest[] @relation("receiver")
+  conversationsAsA directConversation[] @relation("dmUserA")
+  conversationsAsB directConversation[] @relation("dmUserB")
 }
 
 model messages {
@@ -66,4 +68,20 @@ model friendRequest {
   createdAt DateTime @default(now())
   sender    user     @relation("sender", fields: [senderId], references: [id])
   receiver  user     @relation("receiver", fields: [receiverId], references: [id])
+}
+
+// A saved direct-message conversation. Users are stored as an ordered pair
+// (lower id first) so each pair can only exist once.
+model directConversation {
+  id        Int      @id @default(autoincrement())
+  userAId   Int
+  userBId   Int
+  createdAt DateTime @default(now())
+
+  userA user @relation("dmUserA", fields: [userAId], references: [id])
+  userB user @relation("dmUserB", fields: [userBId], references: [id])
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
 }

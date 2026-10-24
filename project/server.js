@@ -22,33 +22,19 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
+});
+
 const server = new ApolloServer({
   schema,
-  context: async ({ req, connection }) => {
-    if (connection && connection.context) {
-      const auth = connection.context.authorization || connection.context.Authorization;
-      const user = await verifyToken(auth);
-      if (user?.userID) return user;
-    }
-    try {
-      const auth = req?.headers?.authorization || req?.headers?.Authorization || req?.headers?.['x-access-token'] || req?.headers?.['x-token'];
-      const user = await verifyToken(auth);
-      if (user?.userID) return user;
-      if (typeof auth === 'string') {
-        const token = auth.replace(/^bearer\s+/i, '').trim();
-        if (token && token.split('.').length === 3) {
-          try {
-            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-            if (payload.userID) return { userID: payload.userID };
-            if (payload.id) return { userID: payload.id };
-            if (payload.sub) return { userID: payload.sub };
-          } catch {}
-        }
-      }
-      return {};
-    } catch (e) {
-      return {};
-    }
+  context: async ({ req }) => {
+    const auth =
+      req?.headers?.authorization ||
+      req?.headers?.['x-access-token'] ||
+      req?.headers?.['x-token'];
+    const user = await verifyToken(auth);
+    return user || {};
   },
 });
 

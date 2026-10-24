@@ -2,10 +2,14 @@ import { gql } from "apollo-server";
 
 export const typeDefs = gql`
     type Query {
+        me: userSchema
         users: [userSchema]
         user(ID: ID!): userSchema
+        getConversations: [userSchema]
+        findUserByUsername(username: String!): userSchema
         getPersonalMessages(receiverID: String!): [sentMessage]
         getGroups: [groupSchema]
+        getGroup(ID: ID!): groupSchema
         getGroupMessages(groupID: ID!): [sentMessage]
         getFriendRequests: [friendRequestSchema]
     }
@@ -91,6 +95,8 @@ input createSimpleUser {
         createSimpleUser(newUser: createSimpleUser!): userSchema
         loginUser(userInfo: userInfoSchema!): genaratedToken
         createGroup(newGroup: createGroupInput!): groupSchema
+        addGroupMembers(groupID: ID!, memberIds: [ID!]!): groupSchema
+        addConversation(username: String!): userSchema
         sendFriendRequest(input: sendFriendRequestInput!): friendRequestSchema
     }
 `;

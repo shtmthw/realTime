@@ -20,9 +20,42 @@ export const LOGIN = gql`
   }
 `;
 
-export const GET_USERS = gql`
-  query GetUsers {
-    users {
+export const GET_ME = gql`
+  query Me {
+    me {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`;
+
+export const GET_CONVERSATIONS = gql`
+  query GetConversations {
+    getConversations {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`;
+
+export const ADD_CONVERSATION = gql`
+  mutation AddConversation($username: String!) {
+    addConversation(username: $username) {
+      id
+      name
+      email
+      createdAt
+    }
+  }
+`;
+
+export const FIND_USER_BY_USERNAME = gql`
+  query FindUserByUsername($username: String!) {
+    findUserByUsername(username: $username) {
       id
       name
       email
@@ -56,6 +89,18 @@ export const GET_GROUPS = gql`
   }
 `;
 
+export const GET_GROUP = gql`
+  query GetGroup($groupID: ID!) {
+    getGroup(ID: $groupID) {
+      id
+      name
+      creatorId
+      memberCount
+      createdAt
+    }
+  }
+`;
+
 export const GET_GROUP_MESSAGES = gql`
   query GetGroupMessages($groupID: ID!) {
     getGroupMessages(groupID: $groupID) {
@@ -64,45 +109,6 @@ export const GET_GROUP_MESSAGES = gql`
       senderID
       senderName
       groupID
-      createdAt
-    }
-  }
-`;
-
-export const CREATE_SIMPLE_USER = gql`
-  mutation CreateSimpleUser($newUser: createSimpleUser!) {
-    createSimpleUser(newUser: $newUser) {
-      id
-      name
-      email
-      createdAt
-    }
-  }
-`;
-
-export const SEND_FRIEND_REQUEST = gql`
-  mutation SendFriendRequest($input: sendFriendRequestInput!) {
-    sendFriendRequest(input: $input) {
-      id
-      senderId
-      receiverId
-      senderName
-      receiverName
-      status
-      createdAt
-    }
-  }
-`;
-
-export const GET_FRIEND_REQUESTS = gql`
-  query GetFriendRequests {
-    getFriendRequests {
-      id
-      senderId
-      receiverId
-      senderName
-      receiverName
-      status
       createdAt
     }
   }
@@ -137,6 +143,18 @@ export const CREATE_GROUP_MESSAGE = gql`
 export const CREATE_GROUP = gql`
   mutation CreateGroup($newGroup: createGroupInput!) {
     createGroup(newGroup: $newGroup) {
+      id
+      name
+      creatorId
+      memberCount
+      createdAt
+    }
+  }
+`;
+
+export const ADD_GROUP_MEMBERS = gql`
+  mutation AddGroupMembers($groupID: ID!, $memberIds: [ID!]!) {
+    addGroupMembers(groupID: $groupID, memberIds: $memberIds) {
       id
       name
       creatorId

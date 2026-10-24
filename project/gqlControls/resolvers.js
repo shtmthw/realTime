@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { signToken, verifyToken } from '../lib/auth.js';
+import { signToken } from '../lib/auth.js';
 
 const prisma = new PrismaClient();
 
@@ -41,18 +41,80 @@ const formatFriendRequest = (fr) => ({
   createdAt: toISO(fr.createdAt),
 });
 
+const requireUser = (ctx) => {
+  const id = Number(ctx?.userID ?? ctx?.id ?? ctx?.sub);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error('You need to log in to continue');
+  }
+  return id;
+};
+
+// Users you can DM: saved conversations plus anyone you have exchanged a
+// direct message with. Group messages (no receiverID) are excluded.
+const getConversationUserIds = async (userID) => {
+  const [conversations, directMessages] = await Promise.all([
+    prisma.directConversation.findMany({
+      where: { OR: [{ userAId: userID }, { userBId: userID }] },
+      select: { userAId: true, userBId: true },
+    }),
+    prisma.messages.findMany({
+      where: {
+        receiverID: { not: null },
+        OR: [{ senderID: userID }, { receiverID: userID }],
+      },
+      select: { senderID: true, receiverID: true },
+    }),
+  ]);
+
+  const ids = new Set();
+  for (const row of conversations) {
+    ids.add(row.userAId);
+    ids.add(row.userBId);
+  }
+  for (const row of directMessages) {
+    if (row.senderID != null) ids.add(row.senderID);
+    if (row.receiverID != null) ids.add(row.receiverID);
+  }
+  ids.delete(userID);
+  return [...ids];
+};
+
+const getConversationUsers = async (userID) => {
+  const ids = await getConversationUserIds(userID);
+  if (ids.length === 0) return [];
+  const users = await prisma.user.findMany({
+    where: { id: { in: ids } },
+    orderBy: { name: 'asc' },
+  });
+  return users.map(formatUser);
+};
+
+const saveConversation = async (userID, otherID) => {
+  const [userAId, userBId] =
+    otherID < userID ? [otherID, userID] : [userID, otherID];
+  try {
+    await prisma.directConversation.upsert({
+      where: { userAId_userBId: { userAId, userBId } },
+      update: {},
+      create: { userAId, userBId },
+    });
+  } catch (err) {
+    // Two simultaneous requests can race on the unique pair; that's fine.
+    if (err?.code !== 'P2002') throw err;
+  }
+};
+
 export const resolvers = {
   Query: {
+    me: async (_, __, ctx) => {
+      const userID = requireUser(ctx);
+      const user = await prisma.user.findUnique({ where: { id: userID } });
+      return user ? formatUser(user) : null;
+    },
+
     users: async (_, __, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Login to continue');
-      }
-      const users = await prisma.user.findMany({
-        where: { id: { not: userID } },
-        orderBy: { name: 'asc' },
-      });
-      return users.map(formatUser);
+      const userID = requireUser(ctx);
+      return getConversationUsers(userID);
     },
 
     user: async (_, { ID }) => {
@@ -63,11 +125,29 @@ export const resolvers = {
       return formatUser(user);
     },
 
-    getPersonalMessages: async (_, { receiverID }, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Login to continue');
+    getConversations: async (_, __, ctx) => {
+      const userID = requireUser(ctx);
+      return getConversationUsers(userID);
+    },
+
+    findUserByUsername: async (_, { username }, ctx) => {
+      requireUser(ctx);
+      const name = (username || '').trim();
+      if (!name) {
+        throw new Error('Enter a username');
       }
+      const matches = await prisma.user.findMany({ where: { name } });
+      if (matches.length === 0) return null;
+      if (matches.length > 1) {
+        throw new Error(
+          'More than one user has that name. Ask them to make their display name unique.'
+        );
+      }
+      return formatUser(matches[0]);
+    },
+
+    getPersonalMessages: async (_, { receiverID }, ctx) => {
+      const userID = requireUser(ctx);
       if (!receiverID) {
         throw new Error('Receiver ID not given');
       }
@@ -86,10 +166,7 @@ export const resolvers = {
     },
 
     getGroups: async (_, __, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Login to continue');
-      }
+      const userID = requireUser(ctx);
       const groups = await prisma.group.findMany({
         where: { members: { some: { userId: userID } } },
         include: { _count: { select: { members: true } } },
@@ -98,10 +175,24 @@ export const resolvers = {
       return groups.map(formatGroup);
     },
 
-    getFriendRequests: async (_, __, { userID }) => {
-      if (!userID) {
-        throw new Error('Login to continue');
-      }
+    getGroup: async (_, { ID }, ctx) => {
+      const userID = requireUser(ctx);
+      const group = await prisma.group.findUnique({
+        where: { id: Number(ID) },
+        include: { _count: { select: { members: true } } },
+      });
+      if (!group) throw new Error('Group not found');
+      const membership = await prisma.groupMember.findUnique({
+        where: {
+          userId_groupId: { userId: userID, groupId: group.id },
+        },
+      });
+      if (!membership) throw new Error('Not a member of this group');
+      return formatGroup(group);
+    },
+
+    getFriendRequests: async (_, __, ctx) => {
+      const userID = requireUser(ctx);
       const requests = await prisma.friendRequest.findMany({
         where: { receiverId: userID },
         include: { sender: true, receiver: true },
@@ -111,10 +202,7 @@ export const resolvers = {
     },
 
     getGroupMessages: async (_, { groupID }, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Login to continue');
-      }
+      const userID = requireUser(ctx);
       if (!groupID) {
         throw new Error('Group ID not given');
       }
@@ -137,14 +225,24 @@ export const resolvers = {
 
   Mutation: {
     createMessage: async (_, { newMsg }, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Please login to send a message');
-      }
+      const userID = requireUser(ctx);
       if (!newMsg.text || newMsg.text.trim().length < 1) {
         throw new Error("Message can't be empty");
       }
-      const receiverID = newMsg.receiverID ? Number(newMsg.receiverID) : null;
+      if (!newMsg.receiverID) {
+        throw new Error('Receiver is required');
+      }
+      const receiverID = Number(newMsg.receiverID);
+      if (receiverID === userID) {
+        throw new Error("You can't message yourself");
+      }
+      const receiver = await prisma.user.findUnique({
+        where: { id: receiverID },
+      });
+      if (!receiver) {
+        throw new Error('User not found');
+      }
+
       const message = await prisma.messages.create({
         data: {
           text: newMsg.text.trim(),
@@ -153,15 +251,15 @@ export const resolvers = {
         },
         include: { sender: true },
       });
-      const formatted = formatMessage(message);
-      return formatted;
+
+      // A sent DM keeps the conversation in both users' Direct Messages list.
+      await saveConversation(userID, receiverID);
+
+      return formatMessage(message);
     },
 
     createGroupMessage: async (_, { newMsg }, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Please login to send a message');
-      }
+      const userID = requireUser(ctx);
       if (!newMsg.text || newMsg.text.trim().length < 1) {
         throw new Error("Message can't be empty");
       }
@@ -184,13 +282,17 @@ export const resolvers = {
         },
         include: { sender: true },
       });
-      const formatted = formatMessage(message);
-      return formatted;
+      return formatMessage(message);
     },
 
     createNewUser: async (_, { newUser }) => {
+      const name = newUser.name?.trim();
+      const email = newUser.email?.trim();
+      if (!name || !email || !newUser.password) {
+        throw new Error('Please fill the required fields');
+      }
       const existingUser = await prisma.user.findUnique({
-        where: { email: newUser.email },
+        where: { email },
       });
       if (existingUser) {
         throw new Error('User already exists');
@@ -198,8 +300,8 @@ export const resolvers = {
       const hashedPassword = await bcrypt.hash(newUser.password, 10);
       const createdUser = await prisma.user.create({
         data: {
-          name: newUser.name,
-          email: newUser.email,
+          name,
+          email,
           password: hashedPassword,
         },
       });
@@ -207,16 +309,19 @@ export const resolvers = {
     },
 
     createSimpleUser: async (_, { newUser }) => {
+      const name = newUser.name?.trim();
+      if (!name) throw new Error('Name is required');
+      const email = `${name.toLowerCase().replace(/\s+/g, '')}@example.com`;
       const existingUser = await prisma.user.findUnique({
-        where: { email: `${newUser.name.toLowerCase().replace(/\s+/g, '')}@example.com` },
+        where: { email },
       });
       if (existingUser) {
         throw new Error('User already exists');
       }
       const createdUser = await prisma.user.create({
         data: {
-          name: newUser.name.trim(),
-          email: `${newUser.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+          name,
+          email,
           password: await bcrypt.hash('default-password-change-me', 10),
         },
       });
@@ -228,7 +333,7 @@ export const resolvers = {
         throw new Error('Please fill the required fields');
       }
       const userExist = await prisma.user.findUnique({
-        where: { email: userInfo.email },
+        where: { email: userInfo.email.trim() },
       });
       if (!userExist) {
         throw new Error('Email or password incorrect');
@@ -244,17 +349,50 @@ export const resolvers = {
       return { name: userExist.name, token };
     },
 
-    createGroup: async (_, { newGroup }, ctx) => {
-      const userID = ctx?.userID || ctx?.id || ctx?.sub;
-      if (!userID) {
-        throw new Error('Please login to create a group');
+    addConversation: async (_, { username }, ctx) => {
+      const userID = requireUser(ctx);
+      const name = (username || '').trim();
+      if (!name) {
+        throw new Error('Enter a username');
       }
-      if (!newGroup.name || newGroup.name.trim().length < 1) {
+
+      // The schema uses a case-insensitive collation, so this matches
+      // "Alice", "alice" and "ALICE" alike.
+      const matches = await prisma.user.findMany({ where: { name } });
+      if (matches.length === 0) {
+        throw new Error(`No user found with the username "${name}"`);
+      }
+      if (matches.length > 1) {
+        throw new Error(
+          'More than one user has that name. Ask them to change their display name so it is unique.'
+        );
+      }
+
+      const other = matches[0];
+      if (other.id === userID) {
+        throw new Error("You can't start a chat with yourself");
+      }
+
+      await saveConversation(userID, other.id);
+      return formatUser(other);
+    },
+
+    createGroup: async (_, { newGroup }, ctx) => {
+      const userID = requireUser(ctx);
+      const name = newGroup.name?.trim();
+      if (!name) {
         throw new Error('Group name is required');
       }
-      const memberIds = Array.from(
-        new Set([...newGroup.memberIds, String(userID)])
-      ).map(Number);
+
+      const requested = Array.isArray(newGroup.memberIds)
+        ? newGroup.memberIds
+            .map(Number)
+            .filter((id) => Number.isInteger(id) && id > 0)
+        : [];
+      const memberIds = Array.from(new Set([...requested, userID]));
+      if (memberIds.length < 2) {
+        throw new Error('Select at least one other member');
+      }
 
       const members = await prisma.user.findMany({
         where: { id: { in: memberIds } },
@@ -265,7 +403,7 @@ export const resolvers = {
 
       const group = await prisma.group.create({
         data: {
-          name: newGroup.name.trim(),
+          name,
           creatorId: userID,
           members: {
             create: memberIds.map((id) => ({ userId: id })),
@@ -276,10 +414,58 @@ export const resolvers = {
       return formatGroup(group);
     },
 
-    sendFriendRequest: async (_, { input }, { userID }) => {
-      if (!userID) {
-        throw new Error('Please login to send a friend request');
+    addGroupMembers: async (_, { groupID, memberIds }, ctx) => {
+      const userID = requireUser(ctx);
+      const groupId = Number(groupID);
+      if (!Number.isInteger(groupId) || groupId <= 0) {
+        throw new Error('Group not found');
       }
+
+      const group = await prisma.group.findUnique({ where: { id: groupId } });
+      if (!group) throw new Error('Group not found');
+
+      const membership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId: userID, groupId } },
+      });
+      if (!membership) throw new Error('Not a member of this group');
+
+      const ids = Array.from(
+        new Set(
+          (Array.isArray(memberIds) ? memberIds : [])
+            .map(Number)
+            .filter((id) => Number.isInteger(id) && id > 0)
+        )
+      );
+      if (ids.length === 0) throw new Error('Select at least one person');
+
+      const users = await prisma.user.findMany({ where: { id: { in: ids } } });
+      if (users.length !== ids.length) {
+        throw new Error('One or more users do not exist');
+      }
+
+      const existing = await prisma.groupMember.findMany({
+        where: { groupId, userId: { in: ids } },
+        select: { userId: true },
+      });
+      const existingIds = new Set(existing.map((row) => row.userId));
+      const newIds = ids.filter((id) => !existingIds.has(id));
+      if (newIds.length === 0) {
+        throw new Error('That person is already in this group');
+      }
+
+      await prisma.groupMember.createMany({
+        data: newIds.map((id) => ({ groupId, userId: id })),
+      });
+
+      const updated = await prisma.group.findUnique({
+        where: { id: groupId },
+        include: { _count: { select: { members: true } } },
+      });
+      return formatGroup(updated);
+    },
+
+    sendFriendRequest: async (_, { input }, ctx) => {
+      const userID = requireUser(ctx);
       if (!input.receiverId) {
         throw new Error('Receiver ID is required');
       }

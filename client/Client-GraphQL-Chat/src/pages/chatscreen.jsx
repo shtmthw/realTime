@@ -1,5 +1,5 @@
 import { useParams, useLocation } from 'react-router-dom';
-import { useQuery, useMutation } from '@apollo/client';
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client';
 import { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -11,112 +11,226 @@ import {
   Button,
   Stack,
   CircularProgress,
+  Alert,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
 } from '@mui/material';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatWindow from '../components/chatWindow';
 import {
+  GET_ME,
+  GET_GROUP,
   GET_PERSONAL_MESSAGES,
   GET_GROUP_MESSAGES,
   CREATE_MESSAGE,
   CREATE_GROUP_MESSAGE,
+  FIND_USER_BY_USERNAME,
+  ADD_GROUP_MEMBERS,
 } from '../graphqlCntrls/operations';
 
-const getCurrentUserId = () => {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-  try {
-    const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload));
-    return (decoded.userID ?? decoded.id)?.toString() ?? null;
-  } catch {
-    return null;
-  }
-};
+const EMPTY_MESSAGES = [];
 
 export default function ChatScreen() {
-  const { userId, userName } = useParams();
-  const { groupId } = useParams();
+  const { userId, userName, groupId } = useParams();
   const location = useLocation();
-  const currentUserId = getCurrentUserId();
   const isGroup = location.pathname.startsWith('/group');
   const conversationId = isGroup ? groupId : userId;
-  const conversationName = isGroup
-    ? 'Group chat'
-    : decodeURIComponent(userName || '');
+
+  const { data: meData, loading: meLoading } = useQuery(GET_ME, {
+    fetchPolicy: 'cache-first',
+  });
+  const currentUserId = meData?.me?.id ?? null;
+
+  const { data: groupData } = useQuery(GET_GROUP, {
+    variables: { groupID: groupId },
+    skip: !isGroup || !groupId,
+  });
 
   const [input, setInput] = useState('');
+  const [sendError, setSendError] = useState(null);
+  const [openAddMember, setOpenAddMember] = useState(false);
+  const [memberName, setMemberName] = useState('');
+  const [memberError, setMemberError] = useState(null);
   const messagesEndRef = useRef();
 
-  const { data, loading } = useQuery(
-    isGroup ? GET_GROUP_MESSAGES : GET_PERSONAL_MESSAGES,
+  const query = isGroup ? GET_GROUP_MESSAGES : GET_PERSONAL_MESSAGES;
+  const variables = isGroup
+    ? { groupID: conversationId }
+    : { receiverID: conversationId };
+
+  const { data, loading, error, refetch } = useQuery(query, {
+    variables,
+    skip: !conversationId || !currentUserId,
+    pollInterval: 3000,
+    fetchPolicy: 'cache-and-network',
+  });
+
+  const [createMessage, { loading: sendingDirect }] = useMutation(CREATE_MESSAGE);
+  const [createGroupMessage, { loading: sendingGroup }] =
+    useMutation(CREATE_GROUP_MESSAGE);
+  const sending = sendingDirect || sendingGroup;
+
+  const [addGroupMembers, { loading: addingMember }] = useMutation(
+    ADD_GROUP_MEMBERS,
     {
-      variables: isGroup
-        ? { groupID: conversationId }
-        : { receiverID: conversationId },
-      skip: !conversationId || !currentUserId,
-      pollInterval: 3000,
+      refetchQueries: ['GetGroup', 'GetGroups'],
+      onCompleted: () => closeAddMember(),
+      onError: (err) =>
+        setMemberError(err.message || 'Could not add that member'),
     }
   );
 
-  const [createMessage] = useMutation(CREATE_MESSAGE);
-  const [createGroupMessage] = useMutation(CREATE_GROUP_MESSAGE);
-
-  const [messages, setMessages] = useState([]);
-
-  useEffect(() => {
-    if (data) {
-      setMessages(
-        isGroup ? data.getGroupMessages : data.getPersonalMessages
-      );
+  const [findMember, { loading: findingMember }] = useLazyQuery(
+    FIND_USER_BY_USERNAME,
+    {
+      fetchPolicy: 'network-only',
+      onCompleted: ({ findUserByUsername: user }) => {
+        if (!user) {
+          setMemberError(
+            `No user found with the username "${memberName.trim()}"`
+          );
+          return;
+        }
+        addGroupMembers({
+          variables: { groupID: groupId, memberIds: [user.id] },
+        });
+      },
+      onError: (err) =>
+        setMemberError(err.message || 'Could not find that user'),
     }
-  }, [data, isGroup]);
+  );
+
+  function closeAddMember() {
+    setOpenAddMember(false);
+    setMemberName('');
+    setMemberError(null);
+  }
+
+  // Derive messages straight from the query so switching conversations can
+  // never briefly show the previous chat.
+  const messages =
+    (isGroup ? data?.getGroupMessages : data?.getPersonalMessages) ?? EMPTY_MESSAGES;
+
+  // Reset the composer when switching conversations.
+  useEffect(() => {
+    setInput('');
+    setSendError(null);
+  }, [conversationId, isGroup]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const conversationName = isGroup
+    ? groupData?.getGroup?.name || 'Group chat'
+    : decodeURIComponent(userName || '');
+
+  const openAddMemberDialog = () => {
+    setMemberName('');
+    setMemberError(null);
+    setOpenAddMember(true);
+  };
+
+  const handleAddMember = (e) => {
+    e?.preventDefault();
+    const name = memberName.trim();
+    if (!name || findingMember || addingMember) return;
+    setMemberError(null);
+    findMember({ variables: { username: name } });
+  };
+
   const send = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || !currentUserId || !conversationId) return;
+    e?.preventDefault();
+    if (!input.trim() || !currentUserId || !conversationId || sending) return;
+
+    const text = input.trim();
+    setSendError(null);
     try {
       if (isGroup) {
         await createGroupMessage({
-          variables: {
-            newMsg: { text: input.trim(), groupID: conversationId },
-          },
+          variables: { newMsg: { text, groupID: conversationId } },
         });
       } else {
         await createMessage({
-          variables: {
-            newMsg: { text: input.trim(), receiverID: conversationId },
-          },
+          variables: { newMsg: { text, receiverID: conversationId } },
         });
       }
       setInput('');
+      await refetch();
     } catch (err) {
-      alert(err.message || 'Failed to send message');
+      setSendError(err.message || 'Failed to send message');
     }
   };
+
+  if (meLoading) {
+    return (
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!currentUserId || !conversationId) return null;
 
   return (
-    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        bgcolor: 'background.default',
+      }}
+    >
       <AppBar position="static" sx={{ mb: 1 }}>
         <Toolbar sx={{ px: 3 }}>
-          <Avatar sx={{ width: 34, height: 34, mr: 2, bgcolor: isGroup ? 'secondary.main' : 'primary.main' }}>
-            {isGroup ? '👥' : (userName?.charAt(0) || '?').toUpperCase()}
+          <Avatar
+            sx={{
+              width: 34,
+              height: 34,
+              mr: 2,
+              bgcolor: isGroup ? 'secondary.main' : 'primary.main',
+              color: isGroup ? 'text.primary' : 'background.default',
+            }}
+          >
+            {isGroup
+              ? conversationName.charAt(0).toUpperCase()
+              : (userName?.charAt(0) || '?').toUpperCase()}
           </Avatar>
-          <Typography variant="h6" sx={{ flex: 1 }}>
-            {conversationName}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {isGroup ? 'Group chat' : 'Direct message'}
-          </Typography>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h6" noWrap>
+              {conversationName}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {isGroup
+                ? groupData?.getGroup
+                  ? `${groupData.getGroup.memberCount} members`
+                  : 'Group chat'
+                : 'Direct message'}
+            </Typography>
+          </Box>
+          {isGroup && (
+            <IconButton
+              onClick={openAddMemberDialog}
+              title="Add member"
+              sx={{ ml: 1 }}
+            >
+              <PersonAddIcon fontSize="small" />
+            </IconButton>
+          )}
         </Toolbar>
       </AppBar>
 
       <Box sx={{ flex: 1, overflowY: 'auto', p: 2, px: 3 }}>
-        {loading ? (
+        {error ? (
+          <Alert severity="error" sx={{ my: 2 }}>
+            {error.message}
+          </Alert>
+        ) : loading && messages.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
@@ -149,25 +263,103 @@ export default function ChatScreen() {
         )}
       </Box>
 
-      <Stack direction="row" spacing={1} sx={{ px: 3, pb: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+      {sendError && (
+        <Alert severity="error" onClose={() => setSendError(null)} sx={{ mx: 3, mb: 1 }}>
+          {sendError}
+        </Alert>
+      )}
+
+      <Stack
+        component="form"
+        direction="row"
+        spacing={1}
+        onSubmit={send}
+        sx={{
+          px: 3,
+          pb: 2,
+          pt: 1.5,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
         <TextField
           size="small"
           placeholder="Type a message..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send(e)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              send(e);
+            }
+          }}
           fullWidth
-          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#0f172a' } }}
+          multiline
+          maxRows={4}
+          sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.default' } }}
         />
         <Button
+          type="submit"
           size="small"
           variant="contained"
-          disabled={!input.trim()}
-          onClick={send}
+          disabled={!input.trim() || sending}
         >
           Send
         </Button>
       </Stack>
+
+      <Dialog
+        open={openAddMember}
+        onClose={closeAddMember}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ component: 'form', onSubmit: handleAddMember }}
+      >
+        <DialogTitle>Add member</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Type the exact username of the person you want to add to{' '}
+            {conversationName}.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Username"
+            fullWidth
+            value={memberName}
+            onChange={(e) => {
+              setMemberName(e.target.value);
+              if (memberError) setMemberError(null);
+            }}
+            disabled={findingMember || addingMember}
+            error={Boolean(memberError)}
+            helperText={memberError ? ' ' : 'Exact display name, e.g. Jane Doe'}
+          />
+          {memberError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {memberError}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeAddMember} disabled={findingMember || addingMember}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={!memberName.trim() || findingMember || addingMember}
+            startIcon={
+              findingMember || addingMember ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : null
+            }
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

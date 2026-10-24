@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   db:
     image: mysql:8.0
@@ -21,6 +19,7 @@ services:
 
   api:
     build: ./project
+    image: matthew552/realtime-api
     container_name: realtime-api
     restart: unless-stopped
     depends_on:
@@ -30,20 +29,35 @@ services:
       DATABASE_URL: mysql://root:rootpassword@db:3306/realtime_chat
       JWT_SECRET: dev-secret-change-me-in-production
       PORT: 4000
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
     ports:
       - "4000:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   client:
-    build: ./client/Client-GraphQL-Chat
+    build:
+      context: ./client/Client-GraphQL-Chat
+      args:
+        VITE_API_URL: /graphql
+    image: matthew552/realtime-client
     container_name: realtime-client
     restart: unless-stopped
     depends_on:
-      - api
-    environment:
-      VITE_API_URL: http://localhost:4000/graphql
+      api:
+        condition: service_healthy
     ports:
-      - "5173:5173"
+      - "5173:80"
 
 volumes:
   realtime_db_data:

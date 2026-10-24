@@ -31,19 +31,20 @@ export default function ChatWindow({ message, currentUserId, isGroup }) {
         {isGroup && !isSent && (
           <Typography
             variant="caption"
-            sx={{ color: 'text.secondary', mb: 0.5, textAlign: 'left' }}
+            sx={{ color: 'text.secondary', mb: 0.5, display: 'block', textAlign: 'left' }}
           >
             {message.senderName || 'Unknown'}
           </Typography>
         )}
-        <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <Typography variant="body2" sx={{ mb: 0.5, wordBreak: 'break-word' }}>
           {message.text}
         </Typography>
         <Typography
           variant="caption"
           sx={{
-            color: 'text.secondary',
+            color: isSent ? 'rgba(16, 20, 24, 0.65)' : 'text.secondary',
             textAlign: isSent ? 'right' : 'left',
+            display: 'block',
           }}
         >
           {time}
