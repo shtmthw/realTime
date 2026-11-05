@@ -24,7 +24,7 @@
 - **Direct messages and group chats.** Find people by username with live search, create groups, add people later, rename, leave.
 - **Feels good to use.** Optimistic sending with retry, unread badges, "new messages" pill, infinite scroll into history, day separators, a reconnecting banner, `Ctrl/⌘ + K` for a new chat.
 - **Minimal, mobile-first UI.** Single pane with back navigation on phones, two panes on desktop. Safe-area aware, 44 px tap targets, light and dark themes (follows your system), installable as a PWA.
-- **Solid backend.** TypeScript end to end, PostgreSQL, argon2id password hashing, httpOnly session cookies, rate limiting, input validation, membership checks on every operation.
+- **Solid backend.** TypeScript end to end, PostgreSQL, argon2id password hashing, httpOnly session cookies, rate limiting, input validation and  membership checks on every operation.
 - **One image.** The API and the web app ship together as `matthew552/realtime`; the only other container is Postgres.
 
 <details>
