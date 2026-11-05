@@ -30,7 +30,7 @@ function Bubble({
   return (
     <div
       className={cn(
-        'w-fit max-w-full whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-[1.4] md:text-sm',
+        'w-fit max-w-full whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-[1.4] md:px-4 md:py-2.5 md:text-base md:leading-normal',
         mine ? 'bg-brand text-brand-foreground' : 'bg-bubble',
         mine ? !first && 'rounded-tr-md' : !first && 'rounded-tl-md',
         mine ? !last && 'rounded-br-md' : !last && 'rounded-bl-md',
@@ -153,7 +153,7 @@ export function MessageList({
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="h-full overflow-y-auto px-3 py-4 md:px-6"
+        className="h-full overflow-y-auto px-3 py-4 md:px-8 lg:px-12"
         role="log"
         aria-live="polite"
         aria-label="Messages"
@@ -169,7 +169,7 @@ export function MessageList({
           </p>
         ) : null}
 
-        <div className="mx-auto flex max-w-3xl flex-col gap-1">
+        <div className="mx-auto flex max-w-5xl flex-col gap-1 md:gap-1.5">
           {timeline.map((item) =>
             item.kind === 'day' ? (
               <div key={item.key} className="my-3 flex justify-center">
@@ -181,7 +181,7 @@ export function MessageList({
               <div
                 key={item.key}
                 className={cn(
-                  'mb-2 flex items-end gap-2',
+                  'mb-2 flex items-end gap-2 md:mb-4 md:gap-3',
                   item.mine ? 'justify-end' : 'justify-start',
                 )}
               >
@@ -195,7 +195,7 @@ export function MessageList({
                 ) : null}
                 <div
                   className={cn(
-                    'flex min-w-0 max-w-[80%] flex-col gap-0.5 md:max-w-[70%]',
+                    'flex min-w-0 max-w-[80%] flex-col gap-0.5 md:max-w-[60%] md:gap-1',
                     item.mine ? 'items-end' : 'items-start',
                   )}
                 >
@@ -225,8 +225,8 @@ export function MessageList({
           )}
 
           {pending.map((p) => (
-            <div key={p.tempId} className="mb-2 flex flex-col items-end gap-0.5">
-              <div className="max-w-[80%] md:max-w-[70%]">
+            <div key={p.tempId} className="mb-2 md:mb-4 flex flex-col items-end gap-0.5">
+              <div className="max-w-[80%] md:max-w-[60%]">
                 <Bubble text={p.body} mine first last muted={p.status === 'sending'} />
               </div>
               {p.status === 'failed' ? (
