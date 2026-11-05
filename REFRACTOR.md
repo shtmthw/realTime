@@ -1,5 +1,7 @@
 # REFRACTOR.md — Realtime v2 rewrite plan
 
+> **Status: implemented.** The sections below are the plan; “Deviations” at the end lists where the implementation differs from it.
+
 A step-by-step plan for rebuilding Realtime in TypeScript with a minimal,
 mobile-first UI, true realtime (GraphQL subscriptions), a hardened backend,
 tests, CI and a single Docker image.
@@ -94,3 +96,16 @@ README with screenshots and a quick start; push images to Docker Hub; commit to 
 - PostgreSQL with a fresh start; v1 MySQL data is not migrated.
 - CI pushes to Docker Hub on `master` (needs `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets).
 - Docker Hub namespace: `matthew552`.
+
+## 5. Deviations from the plan (what changed while building)
+
+| Plan | Built | Why |
+|------|-------|-----|
+| graphql-codegen for typed documents | Hand-written typed documents in `apps/web/src/lib/gql.ts` | Fewer moving parts for a schema this size; the server and e2e tests catch drift |
+| shadcn/ui, react-hook-form | Small in-repo components on Radix Dialog + Tailwind; plain controlled forms with a shared validation module | No generator step or extra dependencies for a handful of components |
+| Apollo Client 4 | Apollo Client 3.x | Stable, widely documented API |
+| `schema.graphql` file | SDL string in `apps/server/src/schema.ts` | Simpler to bundle with `tsc` |
+| Node 24 everywhere | Node 24 in Docker and CI, `engines: >=22` | Works on current LTS lines |
+| Inline theme script | `public/theme-init.js` | The production Content-Security-Policy blocks inline scripts |
+
+Bugs the end-to-end suite caught while building (kept as regression tests): sign-out followed by sign-in left the UI stuck (fixed by `resetSession`), typing indicators were swallowed right after sending, and dark mode did not apply in production because of the CSP.
