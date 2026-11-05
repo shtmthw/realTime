@@ -68,7 +68,7 @@ export function AppShell() {
   }, [unread]);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden">
+    <div className="flex h-dvh w-full overflow-clip">
       <aside
         className={cn(
           'w-full shrink-0 flex-col border-r border-border bg-surface md:flex md:w-80 lg:w-96',

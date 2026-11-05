@@ -60,6 +60,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    overflow: clip; /* the app scrolls inside its panes, never the page */
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
   }

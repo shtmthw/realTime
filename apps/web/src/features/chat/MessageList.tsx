@@ -181,7 +181,7 @@ export function MessageList({
               <div
                 key={item.key}
                 className={cn(
-                  'mb-2 flex items-end gap-2 md:mb-4 md:gap-3',
+                  'mb-2 flex items-end gap-2 md:mb-7 md:gap-3',
                   item.mine ? 'justify-end' : 'justify-start',
                 )}
               >
@@ -195,7 +195,7 @@ export function MessageList({
                 ) : null}
                 <div
                   className={cn(
-                    'flex min-w-0 max-w-[80%] flex-col gap-0.5 md:max-w-[60%] md:gap-1',
+                    'flex min-w-0 max-w-[80%] flex-col gap-0.5 md:max-w-[60%] md:gap-2.5',
                     item.mine ? 'items-end' : 'items-start',
                   )}
                 >
@@ -225,7 +225,7 @@ export function MessageList({
           )}
 
           {pending.map((p) => (
-            <div key={p.tempId} className="mb-2 md:mb-4 flex flex-col items-end gap-0.5">
+            <div key={p.tempId} className="mb-2 md:mb-7 flex flex-col items-end gap-0.5">
               <div className="max-w-[80%] md:max-w-[60%]">
                 <Bubble text={p.body} mine first last muted={p.status === 'sending'} />
               </div>

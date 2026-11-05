@@ -79,130 +79,132 @@ export function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-10 pt-[max(2.5rem,env(safe-area-inset-top))]">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <Logo size={48} />
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-            {mode === 'signin' ? 'Welcome back' : 'Create your account'}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {mode === 'signin'
-              ? 'Sign in to pick up your conversations.'
-              : 'Takes a few seconds. No spam, ever.'}
-          </p>
-        </div>
+    <div className="h-dvh overflow-y-auto">
+      <div className="flex min-h-full items-center justify-center px-4 py-10 pt-[max(2.5rem,env(safe-area-inset-top))]">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex flex-col items-center text-center">
+            <Logo size={48} />
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+              {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {mode === 'signin'
+                ? 'Sign in to pick up your conversations.'
+                : 'Takes a few seconds. No spam, ever.'}
+            </p>
+          </div>
 
-        <div
-          role="tablist"
-          aria-label="Account"
-          className="mb-5 grid grid-cols-2 rounded-xl bg-muted p-1"
-        >
-          {(['signin', 'signup'] as const).map((m) => (
-            <button
-              key={m}
-              role="tab"
-              type="button"
-              aria-selected={mode === m}
-              onClick={() => switchMode(m)}
-              className={cn(
-                'h-10 rounded-lg text-sm font-medium transition-colors md:h-9',
-                mode === m
-                  ? 'bg-background shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {m === 'signin' ? 'Sign in' : 'Sign up'}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={submit} noValidate className="space-y-4">
-          {mode === 'signin' ? (
-            <Field label="Username or email" error={errors.identifier}>
-              {(p) => (
-                <Input
-                  {...p}
-                  value={values.identifier}
-                  onChange={set('identifier')}
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoFocus
-                />
-              )}
-            </Field>
-          ) : (
-            <>
-              <Field
-                label="Username"
-                error={errors.username}
-                hint="3–20 letters, numbers or underscores. This is how people find you."
+          <div
+            role="tablist"
+            aria-label="Account"
+            className="mb-5 grid grid-cols-2 rounded-xl bg-muted p-1"
+          >
+            {(['signin', 'signup'] as const).map((m) => (
+              <button
+                key={m}
+                role="tab"
+                type="button"
+                aria-selected={mode === m}
+                onClick={() => switchMode(m)}
+                className={cn(
+                  'h-10 rounded-lg text-sm font-medium transition-colors md:h-9',
+                  mode === m
+                    ? 'bg-background shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
               >
+                {m === 'signin' ? 'Sign in' : 'Sign up'}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={submit} noValidate className="space-y-4">
+            {mode === 'signin' ? (
+              <Field label="Username or email" error={errors.identifier}>
                 {(p) => (
                   <Input
                     {...p}
-                    value={values.username}
-                    onChange={set('username')}
+                    value={values.identifier}
+                    onChange={set('identifier')}
                     autoComplete="username"
                     autoCapitalize="none"
                     autoCorrect="off"
-                    spellCheck={false}
                     autoFocus
                   />
                 )}
               </Field>
-              <Field label="Email" error={errors.email}>
-                {(p) => (
+            ) : (
+              <>
+                <Field
+                  label="Username"
+                  error={errors.username}
+                  hint="3–20 letters, numbers or underscores. This is how people find you."
+                >
+                  {(p) => (
+                    <Input
+                      {...p}
+                      value={values.username}
+                      onChange={set('username')}
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      autoFocus
+                    />
+                  )}
+                </Field>
+                <Field label="Email" error={errors.email}>
+                  {(p) => (
+                    <Input
+                      {...p}
+                      type="email"
+                      value={values.email}
+                      onChange={set('email')}
+                      autoComplete="email"
+                    />
+                  )}
+                </Field>
+              </>
+            )}
+
+            <Field
+              label="Password"
+              error={errors.password}
+              hint={mode === 'signup' ? 'At least 8 characters.' : undefined}
+            >
+              {(p) => (
+                <div className="relative">
                   <Input
                     {...p}
-                    type="email"
-                    value={values.email}
-                    onChange={set('email')}
-                    autoComplete="email"
+                    type={showPassword ? 'text' : 'password'}
+                    value={values.password}
+                    onChange={set('password')}
+                    autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                    className="pr-11"
                   />
-                )}
-              </Field>
-            </>
-          )}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-1 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              )}
+            </Field>
 
-          <Field
-            label="Password"
-            error={errors.password}
-            hint={mode === 'signup' ? 'At least 8 characters.' : undefined}
-          >
-            {(p) => (
-              <div className="relative">
-                <Input
-                  {...p}
-                  type={showPassword ? 'text' : 'password'}
-                  value={values.password}
-                  onChange={set('password')}
-                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                  className="pr-11"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-1 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-            )}
-          </Field>
+            {formError ? (
+              <p role="alert" className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
+                {formError}
+              </p>
+            ) : null}
 
-          {formError ? (
-            <p role="alert" className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
-              {formError}
-            </p>
-          ) : null}
-
-          <Button type="submit" loading={loading} className="w-full">
-            {mode === 'signin' ? 'Sign in' : 'Create account'}
-          </Button>
-        </form>
+            <Button type="submit" loading={loading} className="w-full">
+              {mode === 'signin' ? 'Sign in' : 'Create account'}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
