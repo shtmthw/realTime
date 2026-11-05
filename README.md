@@ -1,8 +1,8 @@
 <div align="center">
 
-## Realtime
+# Realtime
 
-# **Minimal realtime chat. Direct messages and group chats, delivered instantly.**
+## **Minimal realtime chat. Direct messages and group chats, delivered instantly.**
 
 [![CI](https://github.com/shtmthw/realTime/actions/workflows/ci.yml/badge.svg)](https://github.com/shtmthw/realTime/actions/workflows/ci.yml)
 [![Docker Hub](https://img.shields.io/docker/v/matthew552/realtime?label=docker%20hub&sort=semver)](https://hub.docker.com/r/matthew552/realtime)
