@@ -1,63 +1,37 @@
+# Pull and run:   docker compose up -d      → http://localhost:8080
+# Works with zero configuration. For anything beyond a trial, copy .env.example to .env
+# and set JWT_SECRET and POSTGRES_PASSWORD.
 services:
   db:
-    image: mysql:8.0
-    container_name: realtime-db
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: realtime_chat
-    ports:
-      - "3306:3306"
+      POSTGRES_USER: realtime
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-realtime}
+      POSTGRES_DB: realtime
     volumes:
-      - realtime_db_data:/var/lib/mysql
+      - realtime_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
-      interval: 10s
+      test: ['CMD-SHELL', 'pg_isready -U realtime -d realtime']
+      interval: 5s
       timeout: 5s
-      retries: 10
-    command: --default-authentication-plugin=mysql_native_password
+      retries: 20
 
-  api:
-    build: ./project
-    image: matthew552/realtime-api
-    container_name: realtime-api
+  app:
+    image: matthew552/realtime:latest
+    build: .
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: mysql://root:rootpassword@db:3306/realtime_chat
-      JWT_SECRET: dev-secret-change-me-in-production
-      PORT: 4000
-      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173
+      DATABASE_URL: postgresql://realtime:${POSTGRES_PASSWORD:-realtime}@db:5432/realtime
+      # Leave empty for a random secret per start (everyone is signed out on restart).
+      JWT_SECRET: ${JWT_SECRET:-}
+      # Set to "true" when you serve the app over HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
-      - "4000:4000"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://localhost:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-
-  client:
-    build:
-      context: ./client/Client-GraphQL-Chat
-      args:
-        VITE_API_URL: /graphql
-    image: matthew552/realtime-client
-    container_name: realtime-client
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "5173:80"
+      - '${APP_PORT:-8080}:8080'
 
 volumes:
-  realtime_db_data:
+  realtime_db:
