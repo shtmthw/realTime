@@ -9,7 +9,9 @@ import { memberIds, requireMember } from './conversations.js';
 const bodySchema = z
   .string({ required_error: 'Write a message first' })
   .transform((s) => s.trim())
-  .pipe(z.string().min(1, 'Write a message first').max(4000, 'Messages can be up to 4000 characters'));
+  .pipe(
+    z.string().min(1, 'Write a message first').max(4000, 'Messages can be up to 4000 characters'),
+  );
 
 // 30 messages per 10 seconds per user; typing pings are cheaper but still bounded.
 export const sendLimiter = new RateLimiter(30, 10_000);
@@ -52,7 +54,11 @@ export async function listMessages(
   return { messages: rows.slice(0, take).reverse(), hasMore };
 }
 
-export async function sendMessage(userId: string, conversationId: string, body: unknown): Promise<MessageWithSender> {
+export async function sendMessage(
+  userId: string,
+  conversationId: string,
+  body: unknown,
+): Promise<MessageWithSender> {
   const text = parseInput(bodySchema, body);
   await requireMember(userId, conversationId);
   if (!sendLimiter.allow(userId)) throw fail('RATE_LIMITED', 'You’re sending messages too fast');
@@ -71,7 +77,11 @@ export async function sendMessage(userId: string, conversationId: string, body: 
     }),
   ]);
 
-  publishToUsers(await memberIds(conversationId), { __typename: 'MessageAdded', conversationId, message });
+  publishToUsers(await memberIds(conversationId), {
+    __typename: 'MessageAdded',
+    conversationId,
+    message,
+  });
   return message;
 }
 

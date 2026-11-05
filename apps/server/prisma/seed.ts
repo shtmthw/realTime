@@ -38,7 +38,12 @@ async function main() {
   const id = (name: string) => users[name]!;
 
   async function chat(
-    data: { type: 'DIRECT' | 'GROUP'; name?: string; members: string[]; readUpTo?: Record<string, number> },
+    data: {
+      type: 'DIRECT' | 'GROUP';
+      name?: string;
+      members: string[];
+      readUpTo?: Record<string, number>;
+    },
     lines: Array<[string, string, number]>, // [sender, text, minutes ago]
   ) {
     const memberIds = data.members.map(id);
@@ -82,7 +87,12 @@ async function main() {
   ]);
 
   await chat(
-    { type: 'GROUP', name: 'Weekend hike 🥾', members: ['alice', 'bob', 'carol', 'dave'], readUpTo: { alice: 25 } },
+    {
+      type: 'GROUP',
+      name: 'Weekend hike 🥾',
+      members: ['alice', 'bob', 'carol', 'dave'],
+      readUpTo: { alice: 25 },
+    },
     [
       ['carol', 'Forecast looks clear for Saturday!', 190],
       ['dave', 'I can drive. Leaving at 7:30?', 120],
@@ -98,12 +108,22 @@ async function main() {
     ['carol', 'Anytime. Left two small comments.', day * 2 + 20],
   ]);
 
-  await chat({ type: 'GROUP', name: 'Design crit', members: ['erin', 'alice', 'carol'], readUpTo: { alice: 0 } }, [
-    ['erin', 'Posted the latest mockups in the doc.', day + 400],
-    ['carol', 'Love the calmer palette.', day + 380],
-  ]);
+  await chat(
+    {
+      type: 'GROUP',
+      name: 'Design crit',
+      members: ['erin', 'alice', 'carol'],
+      readUpTo: { alice: 0 },
+    },
+    [
+      ['erin', 'Posted the latest mockups in the doc.', day + 400],
+      ['carol', 'Love the calmer palette.', day + 380],
+    ],
+  );
 
-  console.log(`Seeded ${people.length} users (password for all: "${PASSWORD}"): ${people.map((p) => p.username).join(', ')}`);
+  console.log(
+    `Seeded ${people.length} users (password for all: "${PASSWORD}"): ${people.map((p) => p.username).join(', ')}`,
+  );
 }
 
 main()

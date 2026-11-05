@@ -24,11 +24,17 @@ export class Client {
   cookie = '';
   constructor(private app: FastifyInstance) {}
 
-  async gql<T = Record<string, any>>(query: string, variables: Record<string, unknown> = {}): Promise<GqlResult<T>> {
+  async gql<T = Record<string, any>>(
+    query: string,
+    variables: Record<string, unknown> = {},
+  ): Promise<GqlResult<T>> {
     const res = await this.app.inject({
       method: 'POST',
       url: '/graphql',
-      headers: { 'content-type': 'application/json', ...(this.cookie ? { cookie: this.cookie } : {}) },
+      headers: {
+        'content-type': 'application/json',
+        ...(this.cookie ? { cookie: this.cookie } : {}),
+      },
       payload: { query, variables },
     });
     const setCookie = res.headers['set-cookie'];

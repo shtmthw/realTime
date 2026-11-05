@@ -65,7 +65,10 @@ describe('auth', () => {
     const short = await c.gql(`mutation($i: SignUpInput!) { signUp(input: $i) { id } }`, {
       i: { username: 'alice', email: 'x@test.dev', password: 'short' },
     });
-    expect(short.errors![0]!.extensions).toMatchObject({ code: 'BAD_USER_INPUT', field: 'password' });
+    expect(short.errors![0]!.extensions).toMatchObject({
+      code: 'BAD_USER_INPUT',
+      field: 'password',
+    });
   });
 
   it('rejects duplicate usernames and emails', async () => {
@@ -85,15 +88,25 @@ describe('auth', () => {
     await signUp(new Client(app), 'alice');
     const SIGN_IN = `mutation($i: SignInInput!) { signIn(input: $i) { username } }`;
 
-    const wrong = await new Client(app).gql(SIGN_IN, { i: { identifier: 'alice', password: 'nope-nope' } });
+    const wrong = await new Client(app).gql(SIGN_IN, {
+      i: { identifier: 'alice', password: 'nope-nope' },
+    });
     expect(wrong.errors![0]!.extensions!.code).toBe('UNAUTHENTICATED');
-    const nobody = await new Client(app).gql(SIGN_IN, { i: { identifier: 'ghost', password: 'password123' } });
+    const nobody = await new Client(app).gql(SIGN_IN, {
+      i: { identifier: 'ghost', password: 'password123' },
+    });
     expect(nobody.errors![0]!.message).toBe(wrong.errors![0]!.message); // no user enumeration
 
     const byName = new Client(app);
-    expect((await byName.gql(SIGN_IN, { i: { identifier: 'Alice', password: 'password123' } })).data!.signIn).toEqual({ username: 'alice' });
+    expect(
+      (await byName.gql(SIGN_IN, { i: { identifier: 'Alice', password: 'password123' } })).data!
+        .signIn,
+    ).toEqual({ username: 'alice' });
     const byEmail = new Client(app);
-    expect((await byEmail.gql(SIGN_IN, { i: { identifier: 'alice@test.dev', password: 'password123' } })).errors).toBeUndefined();
+    expect(
+      (await byEmail.gql(SIGN_IN, { i: { identifier: 'alice@test.dev', password: 'password123' } }))
+        .errors,
+    ).toBeUndefined();
 
     expect((await byName.gql(`{ me { id } }`)).data!.me).not.toBeNull();
     await byName.gql(`mutation { signOut }`);
@@ -104,7 +117,8 @@ describe('auth', () => {
     await signUp(new Client(app), 'alice');
     const c = new Client(app);
     const SIGN_IN = `mutation($i: SignInInput!) { signIn(input: $i) { id } }`;
-    for (let i = 0; i < 10; i++) await c.gql(SIGN_IN, { i: { identifier: 'alice', password: 'wrong-wrong' } });
+    for (let i = 0; i < 10; i++)
+      await c.gql(SIGN_IN, { i: { identifier: 'alice', password: 'wrong-wrong' } });
     const blocked = await c.gql(SIGN_IN, { i: { identifier: 'alice', password: 'password123' } });
     expect(blocked.errors![0]!.extensions!.code).toBe('RATE_LIMITED');
   });
@@ -134,7 +148,10 @@ describe('direct messages', () => {
 
   it('survives both people starting the chat at once', async () => {
     const { a, b } = await twoUsers();
-    const [x, y] = await Promise.all([a.gql(START_DIRECT, { u: 'bob' }), b.gql(START_DIRECT, { u: 'alice' })]);
+    const [x, y] = await Promise.all([
+      a.gql(START_DIRECT, { u: 'bob' }),
+      b.gql(START_DIRECT, { u: 'alice' }),
+    ]);
     expect(x.errors).toBeUndefined();
     expect(y.errors).toBeUndefined();
     expect(x.data!.startDirect.id).toBe(y.data!.startDirect.id);
@@ -142,8 +159,12 @@ describe('direct messages', () => {
 
   it('rejects yourself and unknown users', async () => {
     const { a } = await twoUsers();
-    expect((await a.gql(START_DIRECT, { u: 'alice' })).errors![0]!.extensions!.code).toBe('BAD_USER_INPUT');
-    expect((await a.gql(START_DIRECT, { u: 'nobody' })).errors![0]!.extensions!.code).toBe('NOT_FOUND');
+    expect((await a.gql(START_DIRECT, { u: 'alice' })).errors![0]!.extensions!.code).toBe(
+      'BAD_USER_INPUT',
+    );
+    expect((await a.gql(START_DIRECT, { u: 'nobody' })).errors![0]!.extensions!.code).toBe(
+      'NOT_FOUND',
+    );
   });
 
   it('lists conversations newest-activity first with last message', async () => {
@@ -170,10 +191,18 @@ describe('messages', () => {
     const dm = (await a.gql(START_DIRECT, { u: 'bob' })).data!.startDirect;
 
     const sent = await a.gql(SEND, { c: dm.id, b: '  hi there  ' });
-    expect(sent.data!.sendMessage).toMatchObject({ body: 'hi there', sender: { username: 'alice' }, conversationId: dm.id });
+    expect(sent.data!.sendMessage).toMatchObject({
+      body: 'hi there',
+      sender: { username: 'alice' },
+      conversationId: dm.id,
+    });
 
-    expect((await a.gql(SEND, { c: dm.id, b: '   ' })).errors![0]!.extensions!.code).toBe('BAD_USER_INPUT');
-    expect((await a.gql(SEND, { c: dm.id, b: 'x'.repeat(4001) })).errors![0]!.extensions!.code).toBe('BAD_USER_INPUT');
+    expect((await a.gql(SEND, { c: dm.id, b: '   ' })).errors![0]!.extensions!.code).toBe(
+      'BAD_USER_INPUT',
+    );
+    expect(
+      (await a.gql(SEND, { c: dm.id, b: 'x'.repeat(4001) })).errors![0]!.extensions!.code,
+    ).toBe('BAD_USER_INPUT');
   });
 
   it('pages history oldest → newest with a cursor', async () => {
@@ -185,11 +214,13 @@ describe('messages', () => {
     expect(latest.messages.map((m: any) => m.body)).toEqual(['m5', 'm6', 'm7']);
     expect(latest.hasMore).toBe(true);
 
-    const older = (await a.gql(MESSAGES, { c: dm.id, limit: 3, before: latest.messages[0].id })).data!.messages;
+    const older = (await a.gql(MESSAGES, { c: dm.id, limit: 3, before: latest.messages[0].id }))
+      .data!.messages;
     expect(older.messages.map((m: any) => m.body)).toEqual(['m2', 'm3', 'm4']);
     expect(older.hasMore).toBe(true);
 
-    const oldest = (await a.gql(MESSAGES, { c: dm.id, limit: 3, before: older.messages[0].id })).data!.messages;
+    const oldest = (await a.gql(MESSAGES, { c: dm.id, limit: 3, before: older.messages[0].id }))
+      .data!.messages;
     expect(oldest.messages.map((m: any) => m.body)).toEqual(['m1']);
     expect(oldest.hasMore).toBe(false);
   });
@@ -209,7 +240,10 @@ describe('messages', () => {
     ]) {
       expect(res.errors![0]!.extensions!.code).toBe('NOT_FOUND');
     }
-    expect((await eve.gql(`query($id: ID!) { conversation(id: $id) { id } }`, { id: dm.id })).data!.conversation).toBeNull();
+    expect(
+      (await eve.gql(`query($id: ID!) { conversation(id: $id) { id } }`, { id: dm.id })).data!
+        .conversation,
+    ).toBeNull();
     expect((await eve.gql(`{ conversations { id } }`)).data!.conversations).toEqual([]);
     expect(await prisma.message.count()).toBe(1);
   });
@@ -220,7 +254,8 @@ describe('messages', () => {
     await a.gql(SEND, { c: dm.id, b: 'one' });
     await a.gql(SEND, { c: dm.id, b: 'two' });
 
-    const unread = async (c: Client) => (await c.gql(`{ conversations { unreadCount } }`)).data!.conversations[0].unreadCount;
+    const unread = async (c: Client) =>
+      (await c.gql(`{ conversations { unreadCount } }`)).data!.conversations[0].unreadCount;
     expect(await unread(b)).toBe(2);
     expect(await unread(a)).toBe(0); // your own messages are never unread
 
@@ -254,7 +289,8 @@ describe('groups', () => {
     const c = new Client(app);
     await signUp(c, 'carol');
 
-    const g = (await a.gql(CREATE, { n: '  Hike  ', u: ['bob', 'bob', '@carol', 'alice'] })).data!.createGroup;
+    const g = (await a.gql(CREATE, { n: '  Hike  ', u: ['bob', 'bob', '@carol', 'alice'] })).data!
+      .createGroup;
     expect(g).toMatchObject({ type: 'GROUP', title: 'Hike' });
     expect(g.members.map((m: any) => m.username).sort()).toEqual(['alice', 'bob', 'carol']);
 
@@ -265,9 +301,15 @@ describe('groups', () => {
     // add a new person; adding existing members is a conflict
     const d = new Client(app);
     await signUp(d, 'dave');
-    const added = await b.gql(`mutation($c: ID!, $u: [String!]!) { addMembers(conversationId: $c, usernames: $u) { members { username } } }`, { c: g.id, u: ['dave'] });
+    const added = await b.gql(
+      `mutation($c: ID!, $u: [String!]!) { addMembers(conversationId: $c, usernames: $u) { members { username } } }`,
+      { c: g.id, u: ['dave'] },
+    );
     expect(added.data!.addMembers.members).toHaveLength(4);
-    const again = await b.gql(`mutation($c: ID!, $u: [String!]!) { addMembers(conversationId: $c, usernames: $u) { id } }`, { c: g.id, u: ['dave', 'carol'] });
+    const again = await b.gql(
+      `mutation($c: ID!, $u: [String!]!) { addMembers(conversationId: $c, usernames: $u) { id } }`,
+      { c: g.id, u: ['dave', 'carol'] },
+    );
     expect(again.errors![0]!.extensions!.code).toBe('CONFLICT');
     expect((await d.gql(MESSAGES, { c: g.id })).errors).toBeUndefined();
 
@@ -275,7 +317,9 @@ describe('groups', () => {
     const LEAVE = `mutation($c: ID!) { leaveGroup(conversationId: $c) }`;
     expect((await a.gql(LEAVE, { c: g.id })).data!.leaveGroup).toBe(true);
     expect((await a.gql(MESSAGES, { c: g.id })).errors![0]!.extensions!.code).toBe('NOT_FOUND');
-    const roles = await prisma.conversationMember.findMany({ where: { conversationId: g.id, role: 'OWNER' } });
+    const roles = await prisma.conversationMember.findMany({
+      where: { conversationId: g.id, role: 'OWNER' },
+    });
     expect(roles).toHaveLength(1);
   });
 
@@ -289,10 +333,19 @@ describe('groups', () => {
 
   it('validates names and members, and keeps DMs out of group operations', async () => {
     const { a } = await twoUsers();
-    expect((await a.gql(CREATE, { n: '   ', u: ['bob'] })).errors![0]!.extensions).toMatchObject({ code: 'BAD_USER_INPUT', field: 'name' });
-    expect((await a.gql(CREATE, { n: 'X', u: ['ghost'] })).errors![0]!.extensions!.code).toBe('NOT_FOUND');
-    expect((await a.gql(CREATE, { n: 'X', u: [] })).errors![0]!.extensions!.code).toBe('BAD_USER_INPUT');
-    expect((await a.gql(CREATE, { n: 'X', u: ['alice'] })).errors![0]!.extensions!.code).toBe('BAD_USER_INPUT');
+    expect((await a.gql(CREATE, { n: '   ', u: ['bob'] })).errors![0]!.extensions).toMatchObject({
+      code: 'BAD_USER_INPUT',
+      field: 'name',
+    });
+    expect((await a.gql(CREATE, { n: 'X', u: ['ghost'] })).errors![0]!.extensions!.code).toBe(
+      'NOT_FOUND',
+    );
+    expect((await a.gql(CREATE, { n: 'X', u: [] })).errors![0]!.extensions!.code).toBe(
+      'BAD_USER_INPUT',
+    );
+    expect((await a.gql(CREATE, { n: 'X', u: ['alice'] })).errors![0]!.extensions!.code).toBe(
+      'BAD_USER_INPUT',
+    );
 
     const dm = (await a.gql(START_DIRECT, { u: 'bob' })).data!.startDirect;
     const leave = await a.gql(`mutation($c: ID!) { leaveGroup(conversationId: $c) }`, { c: dm.id });
@@ -308,7 +361,10 @@ describe('searchUsers', () => {
     await signUp(new Client(app), 'bob', { displayName: 'Alma B' });
 
     const Q = `query($q: String!) { searchUsers(query: $q) { username } }`;
-    expect((await a.gql(Q, { q: 'al' })).data!.searchUsers.map((u: any) => u.username)).toEqual(['albert', 'bob']);
+    expect((await a.gql(Q, { q: 'al' })).data!.searchUsers.map((u: any) => u.username)).toEqual([
+      'albert',
+      'bob',
+    ]);
     expect((await a.gql(Q, { q: '@alb' })).data!.searchUsers).toEqual([{ username: 'albert' }]);
     expect((await a.gql(Q, { q: 'a' })).data!.searchUsers).toEqual([]);
   });
@@ -318,13 +374,19 @@ describe('profile & health', () => {
   it('updates the profile', async () => {
     const a = new Client(app);
     await signUp(a, 'alice');
-    const ok = await a.gql(`mutation($i: UpdateProfileInput!) { updateProfile(input: $i) { displayName avatarColor } }`, {
-      i: { displayName: ' Ali ', avatarColor: '#ff0000' },
-    });
+    const ok = await a.gql(
+      `mutation($i: UpdateProfileInput!) { updateProfile(input: $i) { displayName avatarColor } }`,
+      {
+        i: { displayName: ' Ali ', avatarColor: '#ff0000' },
+      },
+    );
     expect(ok.data!.updateProfile).toEqual({ displayName: 'Ali', avatarColor: '#ff0000' });
-    const bad = await a.gql(`mutation($i: UpdateProfileInput!) { updateProfile(input: $i) { id } }`, {
-      i: { displayName: 'Ali', avatarColor: 'red' },
-    });
+    const bad = await a.gql(
+      `mutation($i: UpdateProfileInput!) { updateProfile(input: $i) { id } }`,
+      {
+        i: { displayName: 'Ali', avatarColor: 'red' },
+      },
+    );
     expect(bad.errors![0]!.extensions!.code).toBe('BAD_USER_INPUT');
   });
 

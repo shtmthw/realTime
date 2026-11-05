@@ -10,7 +10,10 @@ const schema = z.object({
   PORT: z.preprocess(blankToUndefined, z.coerce.number().int().min(1).max(65535).default(4000)),
   HOST: z.preprocess(blankToUndefined, z.string().default('0.0.0.0')),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  JWT_SECRET: z.preprocess(blankToUndefined, z.string().min(16, 'JWT_SECRET must be at least 16 characters').optional()),
+  JWT_SECRET: z.preprocess(
+    blankToUndefined,
+    z.string().min(16, 'JWT_SECRET must be at least 16 characters').optional(),
+  ),
   WEB_DIST: z.preprocess(
     blankToUndefined,
     z.string().default(fileURLToPath(new URL('../../web/dist', import.meta.url))),

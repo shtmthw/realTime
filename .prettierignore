@@ -4,3 +4,9 @@ client
 project
 package-lock.json
 *.sql
+docs
+*.md
+.github
+**/public
+playwright-report
+test-results

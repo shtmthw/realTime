@@ -27,12 +27,23 @@ const signUpSchema = z.object({
 });
 
 const profileSchema = z.object({
-  displayName: z.string().trim().min(1, 'Display name can’t be empty').max(40, 'Display name is too long'),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, 'Display name can’t be empty')
+    .max(40, 'Display name is too long'),
   avatarColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Pick a valid color'),
 });
 
 export const AVATAR_COLORS = [
-  '#6366f1', '#0ea5e9', '#14b8a6', '#22c55e', '#eab308', '#f97316', '#ec4899', '#a855f7',
+  '#6366f1',
+  '#0ea5e9',
+  '#14b8a6',
+  '#22c55e',
+  '#eab308',
+  '#f97316',
+  '#ec4899',
+  '#a855f7',
 ];
 
 const colorFor = (username: string) => {
@@ -68,10 +79,16 @@ export async function signUp(input: unknown): Promise<User> {
   }
 }
 
-export async function signIn(input: { identifier: string; password: string }, ip: string): Promise<User> {
-  const identifier = String(input.identifier ?? '').trim().toLowerCase();
+export async function signIn(
+  input: { identifier: string; password: string },
+  ip: string,
+): Promise<User> {
+  const identifier = String(input.identifier ?? '')
+    .trim()
+    .toLowerCase();
   const password = String(input.password ?? '');
-  if (!identifier || !password) throw fail('BAD_USER_INPUT', 'Enter your username or email and password');
+  if (!identifier || !password)
+    throw fail('BAD_USER_INPUT', 'Enter your username or email and password');
 
   const key = `${ip}|${identifier}`;
   if (!signInLimiter.allow(key)) {
@@ -81,7 +98,9 @@ export async function signIn(input: { identifier: string; password: string }, ip
   const user = await prisma.user.findFirst({
     where: { OR: [{ username: identifier }, { email: identifier }] },
   });
-  const ok = user ? await verifyPassword(user.passwordHash, password) : (await burnPasswordCheck(password), false);
+  const ok = user
+    ? await verifyPassword(user.passwordHash, password)
+    : (await burnPasswordCheck(password), false);
   if (!user || !ok) {
     signInLimiter.hit(key);
     throw fail('UNAUTHENTICATED', 'Incorrect username/email or password');

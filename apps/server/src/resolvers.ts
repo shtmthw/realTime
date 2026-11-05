@@ -13,8 +13,10 @@ const iso = (d: Date) => d.toISOString();
 
 export const resolvers = {
   Query: {
-    me: async (_: unknown, __: unknown, ctx: Context) => (ctx.userId ? users.getUser(ctx.userId) : null),
-    conversations: (_: unknown, __: unknown, ctx: Context) => conversations.listConversations(requireUser(ctx)),
+    me: async (_: unknown, __: unknown, ctx: Context) =>
+      ctx.userId ? users.getUser(ctx.userId) : null,
+    conversations: (_: unknown, __: unknown, ctx: Context) =>
+      conversations.listConversations(requireUser(ctx)),
     conversation: (_: unknown, { id }: { id: string }, ctx: Context) =>
       conversations.getConversation(requireUser(ctx), id),
     messages: (
@@ -32,7 +34,11 @@ export const resolvers = {
       ctx.session.token = await signSession(user.id);
       return user;
     },
-    signIn: async (_: unknown, { input }: { input: { identifier: string; password: string } }, ctx: Context) => {
+    signIn: async (
+      _: unknown,
+      { input }: { input: { identifier: string; password: string } },
+      ctx: Context,
+    ) => {
       const user = await users.signIn(input, ctx.ip);
       ctx.session.token = await signSession(user.id);
       return user;

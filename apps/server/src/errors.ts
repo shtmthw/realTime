@@ -2,12 +2,7 @@ import { GraphQLError } from 'graphql';
 import { z } from 'zod';
 
 export type ErrorCode =
-  | 'BAD_USER_INPUT'
-  | 'UNAUTHENTICATED'
-  | 'FORBIDDEN'
-  | 'NOT_FOUND'
-  | 'CONFLICT'
-  | 'RATE_LIMITED';
+  'BAD_USER_INPUT' | 'UNAUTHENTICATED' | 'FORBIDDEN' | 'NOT_FOUND' | 'CONFLICT' | 'RATE_LIMITED';
 
 export const fail = (code: ErrorCode, message: string, extensions: Record<string, unknown> = {}) =>
   new GraphQLError(message, { extensions: { code, ...extensions } });

@@ -47,11 +47,14 @@ function listen(cookie: string) {
     retryAttempts: 0,
   });
   sockets.push(client);
-  client.subscribe({ query: EVENTS }, {
-    next: (r) => events.push(r.data!.events),
-    error: (e) => errors.push(e),
-    complete: () => undefined,
-  });
+  client.subscribe(
+    { query: EVENTS },
+    {
+      next: (r) => events.push(r.data!.events),
+      error: (e) => errors.push(e),
+      complete: () => undefined,
+    },
+  );
   return { events, errors };
 }
 
@@ -80,11 +83,16 @@ describe('realtime events', () => {
     const aliceTab = listen(a.cookie);
     await settle();
 
-    await a.gql(`mutation($c: ID!) { sendMessage(conversationId: $c, body: "hello bob") { id } }`, { c: dm.id });
+    await a.gql(`mutation($c: ID!) { sendMessage(conversationId: $c, body: "hello bob") { id } }`, {
+      c: dm.id,
+    });
 
     await until(() => bob.events.some((e) => e.__typename === 'MessageAdded'));
     const received = bob.events.find((e) => e.__typename === 'MessageAdded');
-    expect(received).toMatchObject({ conversationId: dm.id, message: { body: 'hello bob', sender: { username: 'alice' } } });
+    expect(received).toMatchObject({
+      conversationId: dm.id,
+      message: { body: 'hello bob', sender: { username: 'alice' } },
+    });
     await until(() => aliceTab.events.some((e) => e.__typename === 'MessageAdded'));
   });
 
@@ -93,11 +101,15 @@ describe('realtime events', () => {
     const spy = listen(eve.cookie);
     await settle();
 
-    await a.gql(`mutation($c: ID!) { sendMessage(conversationId: $c, body: "private") { id } }`, { c: dm.id });
+    await a.gql(`mutation($c: ID!) { sendMessage(conversationId: $c, body: "private") { id } }`, {
+      c: dm.id,
+    });
     await a.gql(`mutation($c: ID!) { setTyping(conversationId: $c) }`, { c: dm.id });
     await settle(600);
 
-    expect(spy.events.filter((e) => e.__typename === 'MessageAdded' || e.__typename === 'TypingStarted')).toEqual([]);
+    expect(
+      spy.events.filter((e) => e.__typename === 'MessageAdded' || e.__typename === 'TypingStarted'),
+    ).toEqual([]);
   });
 
   it('streams typing indicators to the other members only', async () => {
@@ -108,7 +120,9 @@ describe('realtime events', () => {
 
     await a.gql(`mutation($c: ID!) { setTyping(conversationId: $c) }`, { c: dm.id });
     await until(() => bob.events.some((e) => e.__typename === 'TypingStarted'));
-    expect(bob.events.find((e) => e.__typename === 'TypingStarted')).toMatchObject({ user: { username: 'alice' } });
+    expect(bob.events.find((e) => e.__typename === 'TypingStarted')).toMatchObject({
+      user: { username: 'alice' },
+    });
     await settle();
     expect(alice.events.some((e) => e.__typename === 'TypingStarted')).toBe(false);
   });
@@ -119,7 +133,11 @@ describe('realtime events', () => {
     await settle();
 
     await a.gql(`mutation { createGroup(name: "Trip", usernames: ["bob"]) { id } }`);
-    await until(() => bob.events.some((e) => e.__typename === 'ConversationUpdated' && e.conversation?.title === 'Trip'));
+    await until(() =>
+      bob.events.some(
+        (e) => e.__typename === 'ConversationUpdated' && e.conversation?.title === 'Trip',
+      ),
+    );
   });
 
   it('tracks presence for people you share a conversation with', async () => {
@@ -129,11 +147,21 @@ describe('realtime events', () => {
 
     const bobId = (await prisma.user.findUniqueOrThrow({ where: { username: 'bob' } })).id;
     const bob = listen(b.cookie);
-    await until(() => alice.events.some((e) => e.__typename === 'PresenceChanged' && e.userId === bobId && e.online));
-    expect((await a.gql(`{ conversations { peer { online } } }`)).data!.conversations[0].peer.online).toBe(true);
+    await until(() =>
+      alice.events.some(
+        (e) => e.__typename === 'PresenceChanged' && e.userId === bobId && e.online,
+      ),
+    );
+    expect(
+      (await a.gql(`{ conversations { peer { online } } }`)).data!.conversations[0].peer.online,
+    ).toBe(true);
 
     await sockets[sockets.length - 1]!.dispose();
-    await until(() => alice.events.some((e) => e.__typename === 'PresenceChanged' && e.userId === bobId && !e.online));
+    await until(() =>
+      alice.events.some(
+        (e) => e.__typename === 'PresenceChanged' && e.userId === bobId && !e.online,
+      ),
+    );
     expect(bob.errors).toEqual([]);
   });
 

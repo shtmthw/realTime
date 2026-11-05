@@ -43,7 +43,11 @@ async function toView(userId: string, row: Row): Promise<ConversationView> {
   const me: ConversationMember | undefined = row.members.find((m) => m.userId === userId);
   const unreadCount = me
     ? await prisma.message.count({
-        where: { conversationId: row.id, senderId: { not: userId }, createdAt: { gt: me.lastReadAt } },
+        where: {
+          conversationId: row.id,
+          senderId: { not: userId },
+          createdAt: { gt: me.lastReadAt },
+        },
       })
     : 0;
   const members = row.members.map((m) => m.user);
@@ -63,7 +67,10 @@ async function toView(userId: string, row: Row): Promise<ConversationView> {
 }
 
 /** Throws NOT_FOUND unless `userId` belongs to the conversation (never reveals that it exists). */
-export async function requireMember(userId: string, conversationId: string): Promise<ConversationMember> {
+export async function requireMember(
+  userId: string,
+  conversationId: string,
+): Promise<ConversationMember> {
   const member = await prisma.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId, userId } },
   });
@@ -89,7 +96,10 @@ export async function listConversations(userId: string): Promise<ConversationVie
 }
 
 /** Returns null when the user is not a member (used by realtime events after leaving a group). */
-export async function getConversation(userId: string, id: string): Promise<ConversationView | null> {
+export async function getConversation(
+  userId: string,
+  id: string,
+): Promise<ConversationView | null> {
   const row = await prisma.conversation.findFirst({
     where: { id, members: { some: { userId } } },
     include,
@@ -148,11 +158,18 @@ export async function startDirect(userId: string, username: string): Promise<Con
   return requireView(userId, conversation.id);
 }
 
-export async function createGroup(userId: string, name: unknown, usernames: unknown): Promise<ConversationView> {
+export async function createGroup(
+  userId: string,
+  name: unknown,
+  usernames: unknown,
+): Promise<ConversationView> {
   const groupName = parseInput(groupNameSchema, name, 'name');
-  const handles = parseInput(usernamesSchema, usernames, 'usernames').map((u) => u.replace(/^@/, ''));
+  const handles = parseInput(usernamesSchema, usernames, 'usernames').map((u) =>
+    u.replace(/^@/, ''),
+  );
   const users = (await usersByUsername(handles)).filter((u) => u.id !== userId);
-  if (users.length === 0) throw fail('BAD_USER_INPUT', 'Pick at least one person other than yourself');
+  if (users.length === 0)
+    throw fail('BAD_USER_INPUT', 'Pick at least one person other than yourself');
 
   const conversation = await prisma.conversation.create({
     data: {
@@ -170,14 +187,22 @@ export async function createGroup(userId: string, name: unknown, usernames: unkn
 
 async function requireGroup(userId: string, conversationId: string) {
   await requireMember(userId, conversationId);
-  const conversation = await prisma.conversation.findUniqueOrThrow({ where: { id: conversationId } });
+  const conversation = await prisma.conversation.findUniqueOrThrow({
+    where: { id: conversationId },
+  });
   if (conversation.type !== 'GROUP') throw fail('BAD_USER_INPUT', 'That only works in group chats');
   return conversation;
 }
 
-export async function addMembers(userId: string, conversationId: string, usernames: unknown): Promise<ConversationView> {
+export async function addMembers(
+  userId: string,
+  conversationId: string,
+  usernames: unknown,
+): Promise<ConversationView> {
   await requireGroup(userId, conversationId);
-  const handles = parseInput(usernamesSchema, usernames, 'usernames').map((u) => u.replace(/^@/, ''));
+  const handles = parseInput(usernamesSchema, usernames, 'usernames').map((u) =>
+    u.replace(/^@/, ''),
+  );
   const users = await usersByUsername(handles);
   const existing = new Set(await memberIds(conversationId));
   const fresh = users.filter((u) => !existing.has(u.id));
@@ -191,7 +216,11 @@ export async function addMembers(userId: string, conversationId: string, usernam
   return requireView(userId, conversationId);
 }
 
-export async function renameGroup(userId: string, conversationId: string, name: unknown): Promise<ConversationView> {
+export async function renameGroup(
+  userId: string,
+  conversationId: string,
+  name: unknown,
+): Promise<ConversationView> {
   await requireGroup(userId, conversationId);
   const groupName = parseInput(groupNameSchema, name, 'name');
   await prisma.conversation.update({ where: { id: conversationId }, data: { name: groupName } });
