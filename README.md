@@ -69,7 +69,7 @@ Stop with `docker compose down` (your data stays in the `realtime_db` volume; ad
 | `POSTGRES_PASSWORD` | `realtime` | Database password                                                                        |
 | `COOKIE_SECURE`     | `false`    | Set `true` when serving over HTTPS so cookies are marked `Secure`                        |
 
-Behind a reverse proxy (Caddy, nginx, Traefik), forward WebSocket upgrades on `/graphql` and preserve the `Host` header.
+Behind a reverse proxy (Caddy, nginx, Traefik), forward WebSocket upgrades on `/graphql` and preserve the `Host` Header.
 
 ## Architecture
 
