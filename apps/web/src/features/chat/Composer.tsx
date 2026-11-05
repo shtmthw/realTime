@@ -49,7 +49,7 @@ export function Composer({
         e.preventDefault();
         submit();
       }}
-      className="flex items-end gap-2 border-t border-border bg-background px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]"
+      className="flex items-end gap-2 border-t border-border bg-background px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:px-8 lg:px-12"
     >
       <textarea
         ref={ref}

@@ -169,7 +169,7 @@ export function MessageList({
           </p>
         ) : null}
 
-        <div className="mx-auto flex max-w-5xl flex-col gap-1 md:gap-1.5">
+        <div className="flex flex-col gap-1 md:gap-1.5">
           {timeline.map((item) =>
             item.kind === 'day' ? (
               <div key={item.key} className="my-3 flex justify-center">
