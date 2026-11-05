@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum MemberRole {
+  OWNER
+  MEMBER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  displayName  String
+  email        String   @unique
+  passwordHash String
+  avatarColor  String   @default("#71717a")
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  memberships   ConversationMember[]
+  sentMessages  Message[]
+  createdChats  Conversation[]       @relation("ConversationCreator")
+}
+
+model Conversation {
+  id            String           @id @default(cuid())
+  type          ConversationType
+  name          String?
+  // "<smallerUserId>:<largerUserId>" for DIRECT chats, so a pair can only exist once.
+  directKey     String?          @unique
+  createdById   String
+  createdAt     DateTime         @default(now())
+  lastMessageAt DateTime         @default(now())
+
+  createdBy User                 @relation("ConversationCreator", fields: [createdById], references: [id])
+  members   ConversationMember[]
+  messages  Message[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+  role           MemberRole @default(MEMBER)
+  joinedAt       DateTime   @default(now())
+  lastReadAt     DateTime   @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt, id])
+}

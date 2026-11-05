@@ -1,0 +1,6 @@
+dist
+node_modules
+client
+project
+package-lock.json
+*.sql
