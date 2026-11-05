@@ -18,8 +18,18 @@ COPY apps/server apps/server
 COPY apps/web apps/web
 RUN npm run build
 
-# Keep only what the server needs at runtime.
-RUN npm prune --omit=dev --workspace apps/server --workspace apps/web --include-workspace-root
+# ---------- production dependencies of the server only ----------
+FROM node:24-slim AS prod-deps
+WORKDIR /repo
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+COPY apps/server/package.json apps/server/
+COPY apps/web/package.json apps/web/
+COPY e2e/package.json e2e/
+RUN npm ci --omit=dev --workspace apps/server --include-workspace-root
+COPY apps/server/prisma apps/server/prisma
+RUN node node_modules/prisma/build/index.js generate --schema apps/server/prisma/schema.prisma
 
 # ---------- runtime ----------
 FROM node:24-slim AS runtime
@@ -30,7 +40,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build --chown=node:node /repo/node_modules ./node_modules
+COPY --from=prod-deps --chown=node:node /repo/node_modules ./node_modules
 COPY --from=build --chown=node:node /repo/apps/server/package.json ./package.json
 COPY --from=build --chown=node:node /repo/apps/server/dist ./dist
 COPY --from=build --chown=node:node /repo/apps/server/prisma ./prisma

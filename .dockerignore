@@ -6,7 +6,8 @@
 .env.*
 !.env.example
 docs
-e2e
+e2e/*
+!e2e/package.json
 **/test-results
 **/playwright-report
 test.txt
