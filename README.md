@@ -139,19 +139,6 @@ e2e           Playwright tests and the screenshot generator
 Dockerfile    Builds the single runtime image
 ```
 
-## CI and releases
-
-`.github/workflows/ci.yml` runs on every push and pull request: lint, typecheck, tests (with a Postgres service), build and the Playwright suite. On pushes to `master` it also builds a multi-arch image (`linux/amd64`, `linux/arm64`) and pushes `matthew552/realtime` (`latest` and `sha-<commit>`).
-
-To enable publishing, add two repository secrets in GitHub (Settings, Secrets and variables, Actions): `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub access token with write access).
-
-To publish by hand:
-
-```bash
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t matthew552/realtime:latest -t matthew552/realtime:2.0.0 --push .
-```
-
 ## Upgrading from v1
 
 v2 is a rewrite (TypeScript, PostgreSQL, subscriptions). The data model changed, so v1 MySQL data is not migrated. See [REFRACTOR.md](REFRACTOR.md) for the full plan and the reasoning.
