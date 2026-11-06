@@ -1,5 +1,4 @@
 <div align="center">
-
 # Realtime
 
 **Minimal realtime chat. Direct messages and group chats, delivered instantly.**
