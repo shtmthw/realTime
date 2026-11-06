@@ -53,6 +53,8 @@ To stop, run `docker compose down`. Your data is kept in the `realtime_db` volum
 
 </div>
 
+
+
 | Light                                                    | Dark                                                         |
 | -------------------------------------------------------- | ------------------------------------------------------------ |
 | ![Group chat](docs/screenshots/desktop-group-light.png)  | ![Group chat, dark theme](docs/screenshots/desktop-group-dark.png) |
