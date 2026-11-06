@@ -58,8 +58,8 @@ To stop, run `docker compose down`. Your data is kept in the `realtime_db` volum
 | Light                                                    | Dark                                                         |
 | -------------------------------------------------------- | ------------------------------------------------------------ |
 | ![Group chat](docs/screenshots/desktop-group-light.png)  | ![Group chat, dark theme](docs/screenshots/desktop-group-dark.png) |
-| ![Starting a new chat](docs/screenshots/new-chat-light.png) | ![Direct message, dark theme](docs/screenshots/desktop-chat-dark.png) |
-| ![Sign up](docs/screenshots/auth-light.png)              | ![Sign up, dark theme](docs/screenshots/auth-dark.png)       |
+| ![Sign up](docs/screenshots/auth-light.png)              | ![Direct message, dark theme](docs/screenshots/desktop-chat-dark.png) |
+              
 
 ## Configuration
 
